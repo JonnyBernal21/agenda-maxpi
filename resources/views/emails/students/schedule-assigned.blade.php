@@ -11,11 +11,7 @@ Tu curso **{{ $student->course?->name ?? 'de manejo' }}** ya tiene horario asign
 @endforeach
 </x-mail::table>
 
-Puedes consultar tu agenda en la plataforma:
-
-<x-mail::button :url="route('student.login')">
-Iniciar sesión
-</x-mail::button>
+Si tienes dudas sobre tus horarios, contacta a la escuela.
 
 Saludos,<br>
 {{ config('app.name') }}

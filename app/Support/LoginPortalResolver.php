@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Models\Instructor;
-use App\Models\Student;
 use App\Models\User;
 
 class LoginPortalResolver
@@ -15,10 +14,6 @@ class LoginPortalResolver
     {
         if (User::query()->where('email', $email)->exists()) {
             return self::portal('web', 'administrador', 'login');
-        }
-
-        if (Student::query()->where('email', $email)->exists()) {
-            return self::portal('student', 'alumno', 'student.login');
         }
 
         if (Instructor::query()->where('email', $email)->exists()) {

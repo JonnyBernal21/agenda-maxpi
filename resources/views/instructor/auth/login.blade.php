@@ -84,11 +84,7 @@
                             </button>
                         </form>
 
-                        <p class="text-center text-muted small mt-4 mb-2">
-                            ¿Eres alumno?
-                            <a href="{{ route('student.login') }}" class="text-decoration-none">Acceso alumno</a>
-                        </p>
-                        <p class="text-center text-muted small mb-0">
+                        <p class="text-center text-muted small mt-4 mb-0">
                             ¿Eres administrador?
                             <a href="{{ route('login') }}" class="text-decoration-none">Acceso admin</a>
                         </p>

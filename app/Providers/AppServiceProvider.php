@@ -27,13 +27,11 @@ class AppServiceProvider extends ServiceProvider
     {
         View::composer([
             'layouts.admin',
-            'layouts.student',
             'admin.partials.add-student-modal',
             'admin.partials.add-instructor-modal',
             'admin.partials.add-vehicle-modal',
             'admin.partials.schedule-class-modal',
             'admin.partials.assign-schedule-modal',
-            'student.partials.book-class-modal',
         ], function ($view) {
             $cutoff = app(SameDayScheduleCutoff::class);
 

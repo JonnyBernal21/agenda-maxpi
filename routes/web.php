@@ -12,18 +12,12 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\InstructorController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\Auth\InstructorLoginController;
-use App\Http\Controllers\Auth\StudentLoginController;
 use App\Http\Controllers\Instructor\CalendarController as InstructorCalendarController;
 use App\Http\Controllers\Instructor\DashboardController as InstructorDashboardController;
-use App\Http\Controllers\Student\AvailabilityController as StudentAvailabilityController;
-use App\Http\Controllers\Student\CalendarController as StudentCalendarController;
-use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
-use App\Http\Controllers\Student\ReservaController as StudentReservaController;
 use App\Http\Controllers\StudentController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/alumno/login');
+Route::redirect('/', '/login');
 
 Route::middleware('guest:web')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
@@ -58,20 +52,6 @@ Route::middleware('auth:web')->group(function () {
     Route::get('/admin/reservas/options', [AdminAvailabilityController::class, 'options'])->name('admin.reservas.options');
     Route::get('/admin/reservas/check', [AdminAvailabilityController::class, 'check'])->name('admin.reservas.check');
     Route::get('/admin/reservas/instructor-conflicts', [AdminAvailabilityController::class, 'instructorConflicts'])->name('admin.reservas.instructor-conflicts');
-});
-
-Route::middleware('guest:student')->group(function () {
-    Route::get('/alumno/login', [StudentLoginController::class, 'create'])->name('student.login');
-    Route::post('/alumno/login', [StudentLoginController::class, 'store']);
-});
-
-Route::middleware('auth:student')->prefix('alumno')->name('student.')->group(function () {
-    Route::post('/logout', [StudentLoginController::class, 'destroy'])->name('logout');
-    Route::get('/', StudentDashboardController::class)->name('dashboard');
-    Route::get('/calendar/events', [StudentCalendarController::class, 'events'])->name('calendar.events');
-    Route::get('/reservas/check', [StudentAvailabilityController::class, 'check'])->name('reservas.check');
-    Route::get('/reservas/options', [StudentAvailabilityController::class, 'options'])->name('reservas.options');
-    Route::post('/reservas', [StudentReservaController::class, 'store'])->name('reservas.store');
 });
 
 Route::middleware('guest:instructor')->group(function () {

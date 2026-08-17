@@ -92,11 +92,7 @@
                             </button>
                         </form>
 
-                        <p class="text-center text-muted small mt-4 mb-2">
-                            ¿Eres alumno?
-                            <a href="{{ route('student.login') }}" class="text-decoration-none">Portal del alumno</a>
-                        </p>
-                        <p class="text-center text-muted small mb-0">
+                        <p class="text-center text-muted small mt-4 mb-0">
                             ¿Eres instructor?
                             <a href="{{ route('instructor.login') }}" class="text-decoration-none">Portal del instructor</a>
                         </p>

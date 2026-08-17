@@ -13,10 +13,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(function (Request $request) {
-            if ($request->is('alumno', 'alumno/*')) {
-                return route('student.login');
-            }
-
             if ($request->is('instructor', 'instructor/*')) {
                 return route('instructor.login');
             }
@@ -25,10 +21,6 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $middleware->redirectUsersTo(function (Request $request) {
-            if ($request->is('alumno', 'alumno/*')) {
-                return route('student.dashboard');
-            }
-
             if ($request->is('instructor', 'instructor/*')) {
                 return route('instructor.dashboard');
             }

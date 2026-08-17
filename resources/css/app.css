@@ -746,8 +746,7 @@ body {
 }
 
 /* Calendar */
-#admin-calendar,
-#student-calendar {
+#admin-calendar {
     min-height: 720px;
 }
 
