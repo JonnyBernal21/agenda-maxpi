@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\InstructorFactory;
+use App\Models\Concerns\HasUppercasePersonFields;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -11,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 class Instructor extends Authenticatable
 {
     /** @use HasFactory<InstructorFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasUppercasePersonFields, Notifiable;
 
     /**
      * @var list<string>
@@ -27,6 +28,10 @@ class Instructor extends Authenticatable
         'state',
         'zip',
         'country',
+        'photo_path',
+        'dni_front_path',
+        'dni_back_path',
+        'address_proof_path',
     ];
 
     /**
@@ -55,5 +60,19 @@ class Instructor extends Authenticatable
     public function fullName(): string
     {
         return trim($this->name.' '.$this->last_name);
+    }
+
+    public function documentUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        return asset($path);
+    }
+
+    public function photoUrl(): ?string
+    {
+        return $this->documentUrl($this->photo_path);
     }
 }

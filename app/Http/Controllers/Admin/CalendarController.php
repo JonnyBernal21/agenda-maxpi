@@ -41,6 +41,7 @@ class CalendarController extends Controller
                     : 'Vehículo';
 
                 $colors = ReservaCalendarColors::forStatus($reserva->status);
+                $movable = in_array($reserva->status, ['pendiente', 'confirmada'], true);
 
                 return [
                     'id' => $reserva->id,
@@ -50,7 +51,13 @@ class CalendarController extends Controller
                     'backgroundColor' => $colors['background'],
                     'borderColor' => $colors['border'],
                     'textColor' => $colors['text'],
-                    'classNames' => [$colors['class']],
+                    'editable' => $movable,
+                    'startEditable' => $movable,
+                    'durationEditable' => false,
+                    'classNames' => array_values(array_filter([
+                        $colors['class'],
+                        $movable ? 'fc-event-movable' : null,
+                    ])),
                     'extendedProps' => [
                         'isAvailable' => false,
                         'student' => $studentName,
@@ -80,6 +87,9 @@ class CalendarController extends Controller
                     'backgroundColor' => $colors['background'],
                     'borderColor' => $colors['border'],
                     'textColor' => $colors['text'],
+                    'editable' => false,
+                    'startEditable' => false,
+                    'durationEditable' => false,
                     'classNames' => [$colors['class']],
                     'extendedProps' => [
                         'isAvailable' => true,

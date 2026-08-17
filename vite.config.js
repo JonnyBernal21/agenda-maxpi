@@ -11,6 +11,7 @@ export default defineConfig({
                 'resources/js/admin-panel.js',
                 'resources/js/admin-reservas.js',
                 'resources/js/admin-datatables.js',
+                'resources/js/admin-reports.js',
                 'resources/js/student-calendar.js',
                 'resources/js/student-booking.js',
                 'resources/js/instructor-calendar.js',

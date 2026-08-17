@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const optionsUrl = modalEl.dataset.optionsUrl;
     const checkUrl = modalEl.dataset.checkUrl;
     const searchInput = document.getElementById('studentSearchInput');
-    const searchBtn = document.getElementById('studentSearchBtn');
     const resultsEl = document.getElementById('studentSearchResults');
     const selectedAlert = document.getElementById('studentSelectedAlert');
     const selectedNameEl = document.getElementById('studentSelectedName');
@@ -54,6 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
     formFields?.parentElement?.insertBefore(scheduleFeedback, formFields);
 
     let slotLocked = false;
+    let searchTimer = 0;
+    let searchRequest = 0;
+    const MIN_SEARCH_CHARS = 4;
 
     const setFeedback = (type, message) => {
         scheduleFeedback.className = `alert alert-${type} mb-3`;
@@ -322,6 +324,10 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedCourseEl.textContent = `${student.course} · ${student.completed_classes ?? student.used_classes}/${student.allowed_classes} completadas · ${student.remaining_classes} por agendar · máx. 2 clases/día`;
         }
 
+        if (searchInput) {
+            searchInput.value = student.full_name;
+        }
+
         selectedAlert?.classList.remove('d-none');
         notFoundAlert?.classList.add('d-none');
         resultsEl?.classList.add('d-none');
@@ -332,15 +338,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const clearStudent = () => {
+    const clearStudent = (resetInput = false) => {
         if (studentIdInput) {
             studentIdInput.value = '';
         }
+
+        if (resetInput && searchInput) {
+            searchInput.value = '';
+        }
+
         hideAlerts();
         enableForm(false);
         resetSelectFilters();
         hideFeedback();
     };
+
+    const escapeHtml = (value) =>
+        String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
 
     const renderResults = (students) => {
         if (!resultsEl) {
@@ -351,7 +369,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (students.length === 0) {
             resultsEl.classList.add('d-none');
-            showNotFound('No se encontró ningún alumno con ese nombre.');
+            showNotFound(`
+                No se encontró ningún alumno con ese nombre.
+                <button
+                    type="button"
+                    class="btn btn-sm btn-brand-outline ms-1"
+                    data-bs-dismiss="modal"
+                    data-bs-toggle="modal"
+                    data-bs-target="#addStudentModal"
+                >
+                    <i class="bi bi-person-plus"></i> Agregar alumno
+                </button>
+            `);
             return;
         }
 
@@ -361,6 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'list-group-item list-group-item-action';
+            button.setAttribute('role', 'option');
 
             const statusLabel = student.can_reserve
                 ? `${student.remaining_classes} clases restantes`
@@ -369,18 +399,24 @@ document.addEventListener('DOMContentLoaded', () => {
             button.innerHTML = `
                 <div class="d-flex justify-content-between align-items-start gap-2">
                     <div>
-                        <div class="fw-semibold">${student.full_name}</div>
-                        <small class="text-muted">${student.email}</small>
+                        <div class="fw-semibold">${escapeHtml(student.full_name)}</div>
+                        <small class="text-muted">${escapeHtml(student.email)}</small>
                     </div>
-                    <span class="table-badge">${student.course ?? 'Sin curso'}</span>
+                    <span class="table-badge">${escapeHtml(student.course ?? 'Sin curso')}</span>
                 </div>
-                <small class="${student.can_reserve ? 'text-muted' : 'text-danger'}">${statusLabel}</small>
+                <small class="${student.can_reserve ? 'text-muted' : 'text-danger'}">${escapeHtml(statusLabel)}</small>
             `;
 
             if (student.can_reserve) {
                 button.addEventListener('click', () => selectStudent(student));
             } else {
-                button.classList.add('pe-none', 'opacity-50');
+                button.classList.add('opacity-50');
+                button.addEventListener('click', () => {
+                    hideAlerts();
+                    showNotFound(
+                        `El alumno <strong>${escapeHtml(student.full_name)}</strong> no tiene clases disponibles en su curso (${escapeHtml(student.course ?? 'sin curso')}).`
+                    );
+                });
             }
 
             resultsEl.appendChild(button);
@@ -392,41 +428,71 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchStudents = async () => {
         const query = searchInput?.value.trim() ?? '';
 
-        hideAlerts();
-
-        if (query.length < 2) {
-            showNotFound('Escribe al menos 2 caracteres para buscar.');
+        if (query.length < MIN_SEARCH_CHARS) {
+            resultsEl?.classList.add('d-none');
+            if (resultsEl) {
+                resultsEl.innerHTML = '';
+            }
+            notFoundAlert?.classList.add('d-none');
             return;
         }
 
-        searchBtn.disabled = true;
-        searchBtn.textContent = 'Buscando...';
+        const requestId = ++searchRequest;
+
+        if (resultsEl) {
+            resultsEl.innerHTML = '<div class="list-group-item text-muted small">Buscando alumnos...</div>';
+            resultsEl.classList.remove('d-none');
+        }
+
+        notFoundAlert?.classList.add('d-none');
 
         try {
             const response = await fetch(`${searchUrl}?q=${encodeURIComponent(query)}`, {
                 headers: { Accept: 'application/json' },
             });
 
+            if (requestId !== searchRequest) {
+                return;
+            }
+
             const students = await response.json();
-            renderResults(students);
+            renderResults(Array.isArray(students) ? students : []);
         } catch {
+            if (requestId !== searchRequest) {
+                return;
+            }
+
+            resultsEl?.classList.add('d-none');
             showNotFound('Error al buscar. Intenta de nuevo.');
-        } finally {
-            searchBtn.disabled = false;
-            searchBtn.textContent = 'Verificar';
         }
     };
 
-    searchBtn?.addEventListener('click', searchStudents);
+    searchInput?.addEventListener('input', () => {
+        if (studentIdInput?.value) {
+            studentIdInput.value = '';
+            selectedAlert?.classList.add('d-none');
+            enableForm(false);
+            resetSelectFilters();
+            hideFeedback();
+        }
+
+        window.clearTimeout(searchTimer);
+        searchTimer = window.setTimeout(searchStudents, 250);
+    });
 
     searchInput?.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
             event.preventDefault();
+            window.clearTimeout(searchTimer);
             searchStudents();
+        }
+
+        if (event.key === 'Escape') {
+            resultsEl?.classList.add('d-none');
         }
     });
 
-    clearBtn?.addEventListener('click', clearStudent);
+    clearBtn?.addEventListener('click', () => clearStudent(true));
 
     ['reserva_date', 'reserva_time', 'reserva_instructor_id', 'reserva_vehicle_id'].forEach((id) => {
         document.getElementById(id)?.addEventListener('change', async () => {
@@ -449,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     modalEl.addEventListener('hidden.bs.modal', () => {
         if (modalEl.dataset.autoOpen !== 'true') {
-            clearStudent();
+            clearStudent(true);
             unlockSlot();
             if (searchInput) {
                 searchInput.value = '';

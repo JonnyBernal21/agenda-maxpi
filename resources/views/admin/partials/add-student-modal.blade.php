@@ -4,25 +4,34 @@
     tabindex="-1"
     aria-labelledby="addStudentModalLabel"
     aria-hidden="true"
-    data-auto-open="{{ ($errors->any() && old('_form') === 'student') ? 'true' : 'false' }}"
+    data-store-url="{{ route('admin.students.store') }}"
+    data-update-base="{{ url('admin/students') }}"
+    data-editing-id="{{ old('_form') === 'student-edit' ? old('editing_id') : '' }}"
+    data-auto-open="{{ ($errors->any() && in_array(old('_form'), ['student', 'student-edit'], true)) ? 'true' : 'false' }}"
 >
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <form method="POST" action="{{ route('admin.students.store') }}" class="modal-form-layout">
+            <form method="POST" action="{{ route('admin.students.store') }}" class="modal-form-layout" id="studentAdminForm">
                 @csrf
-                <input type="hidden" name="_form" value="student">
+                <input type="hidden" name="_method" id="studentFormSpoofMethod" value="PUT" disabled>
+                <input type="hidden" name="_form" id="studentFormType" value="{{ old('_form', 'student') }}">
+                <input type="hidden" name="editing_id" id="studentEditingId" value="{{ old('editing_id') }}">
 
                 <div class="modal-header">
                     <h5 class="modal-title fw-semibold d-flex align-items-center" id="addStudentModalLabel">
-                        <span class="modal-title-icon"><i class="bi bi-person-plus"></i></span>
-                        Agregar alumno
+                        <span class="modal-title-icon"><i class="bi bi-person-plus" id="studentFormIcon"></i></span>
+                        <span id="studentFormTitle">Agregar alumno</span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
 
                 <div class="modal-body">
-                    @if ($errors->any() && old('_form') === 'student')
-                        <div class="alert alert-danger" role="alert">
+                    <p class="small text-muted mb-3" id="studentFormHint">
+                        Después de guardar se abrirá un segundo paso para asignar <strong>fecha de inicio, días y hora</strong> de sus clases.
+                    </p>
+
+                    @if ($errors->any() && in_array(old('_form'), ['student', 'student-edit'], true))
+                        <div class="alert alert-danger" role="alert" id="studentFormErrorAlert">
                             Revisa los campos marcados e intenta de nuevo.
                         </div>
                     @endif
@@ -58,8 +67,9 @@
                                 id="student_name"
                                 name="name"
                                 value="{{ old('name') }}"
-                                class="form-control @error('name') is-invalid @enderror"
-                                placeholder="Ej. Juan"
+                                class="form-control input-uppercase @error('name') is-invalid @enderror"
+                                placeholder="EJ. JUAN"
+                                autocapitalize="characters"
                                 required
                             >
                             @error('name')
@@ -74,8 +84,9 @@
                                 id="student_last_name"
                                 name="last_name"
                                 value="{{ old('last_name') }}"
-                                class="form-control @error('last_name') is-invalid @enderror"
-                                placeholder="Ej. Pérez García"
+                                class="form-control input-uppercase @error('last_name') is-invalid @enderror"
+                                placeholder="EJ. PÉREZ GARCÍA"
+                                autocapitalize="characters"
                                 required
                             >
                             @error('last_name')
@@ -122,8 +133,9 @@
                                 id="student_address"
                                 name="address"
                                 value="{{ old('address') }}"
-                                class="form-control @error('address') is-invalid @enderror"
-                                placeholder="Calle, número, colonia"
+                                class="form-control input-uppercase @error('address') is-invalid @enderror"
+                                placeholder="CALLE, NÚMERO, COLONIA"
+                                autocapitalize="characters"
                                 required
                             >
                             @error('address')
@@ -138,8 +150,9 @@
                                 id="student_city"
                                 name="city"
                                 value="{{ old('city') }}"
-                                class="form-control @error('city') is-invalid @enderror"
-                                placeholder="Ciudad de México"
+                                class="form-control input-uppercase @error('city') is-invalid @enderror"
+                                placeholder="CIUDAD DE MÉXICO"
+                                autocapitalize="characters"
                                 required
                             >
                             @error('city')
@@ -154,8 +167,9 @@
                                 id="student_state"
                                 name="state"
                                 value="{{ old('state') }}"
-                                class="form-control @error('state') is-invalid @enderror"
+                                class="form-control input-uppercase @error('state') is-invalid @enderror"
                                 placeholder="CDMX"
+                                autocapitalize="characters"
                                 required
                             >
                             @error('state')
@@ -199,9 +213,9 @@
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-brand-outline" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-brand d-flex align-items-center gap-2">
+                    <button type="submit" class="btn btn-brand d-flex align-items-center gap-2" id="studentFormSubmit">
                         <i class="bi bi-check-lg"></i>
-                        Guardar alumno
+                        <span id="studentFormSubmitLabel">Guardar alumno</span>
                     </button>
                 </div>
             </form>

@@ -74,7 +74,7 @@
                                 <option value="">Seleccionar vehículo</option>
                                 @foreach ($vehicles as $vehicle)
                                     <option value="{{ $vehicle->id }}" @selected(old('vehicle_id') == $vehicle->id)>
-                                        {{ $vehicle->modelo }} — {{ $vehicle->plate }}
+                                        {{ $vehicle->optionLabel() }}
                                     </option>
                                 @endforeach
                             </select>
@@ -90,7 +90,7 @@
                                 id="book_date"
                                 name="date"
                                 value="{{ old('date') }}"
-                                min="{{ now()->format('Y-m-d') }}"
+                                min="{{ $minBookableDate }}"
                                 class="form-control @error('date') is-invalid @enderror"
                                 required
                             >

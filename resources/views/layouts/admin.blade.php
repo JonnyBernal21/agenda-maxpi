@@ -84,11 +84,14 @@
     </main>
 
     @include('admin.partials.add-student-modal')
+    @include('admin.partials.student-schedule-modal')
     @include('admin.partials.add-instructor-modal')
     @include('admin.partials.add-vehicle-modal')
     @include('admin.partials.schedule-class-modal')
+    @include('admin.partials.assign-schedule-modal')
+    @include('admin.partials.schedule-summary-modal')
 @endsection
 
 @push('scripts')
-    @vite(['resources/js/admin-panel.js', 'resources/js/admin-reservas.js', 'resources/js/flash-alerts.js'])
+    @vite(['resources/js/admin-panel.js', 'resources/js/admin-reservas.js'])
 @endpush

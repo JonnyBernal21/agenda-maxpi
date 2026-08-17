@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\StudentFactory;
+use App\Models\Concerns\HasUppercasePersonFields;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,7 +13,7 @@ use Illuminate\Notifications\Notifiable;
 class Student extends Authenticatable
 {
     /** @use HasFactory<StudentFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasUppercasePersonFields, Notifiable;
 
     /**
      * @var list<string>

@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\Instructor;
 use App\Models\Reservas;
 use App\Models\Vehicle;
+use App\Services\SameDayScheduleCutoff;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -31,13 +32,19 @@ class AppServiceProvider extends ServiceProvider
             'admin.partials.add-instructor-modal',
             'admin.partials.add-vehicle-modal',
             'admin.partials.schedule-class-modal',
+            'admin.partials.assign-schedule-modal',
             'student.partials.book-class-modal',
         ], function ($view) {
+            $cutoff = app(SameDayScheduleCutoff::class);
+
             $view->with([
                 'courses' => Course::query()->orderBy('num_classes')->get(),
                 'instructors' => Instructor::query()->orderBy('name')->get(),
                 'vehicles' => Vehicle::query()->orderBy('modelo')->get(),
                 'timeSlots' => Reservas::availableTimes(),
+                'minBookableDate' => $cutoff->minBookableDate(),
+                'sameDayScheduleBlocked' => $cutoff->isSameDayBlocked(),
+                'sameDayScheduleMessage' => $cutoff->message(),
             ]);
         });
     }

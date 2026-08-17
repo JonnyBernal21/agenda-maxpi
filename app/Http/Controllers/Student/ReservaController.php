@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Student;
 use App\Http\Controllers\Controller;
 use App\Models\Reservas;
 use App\Services\ReservaAvailabilityService;
+use App\Services\SameDayScheduleCutoff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +15,7 @@ class ReservaController extends Controller
 {
     public function __construct(
         private readonly ReservaAvailabilityService $availability,
+        private readonly SameDayScheduleCutoff $sameDayCutoff,
     ) {}
 
     public function store(Request $request): RedirectResponse
@@ -29,14 +31,18 @@ class ReservaController extends Controller
 
         $timeSlots = Reservas::availableTimes();
 
+        $minDate = $this->sameDayCutoff->minBookableDate();
+
         $validated = $request->validate([
             'instructor_id' => ['required', Rule::exists('instructors', 'id')],
             'vehicle_id' => ['required', Rule::exists('vehicles', 'id')],
-            'date' => ['required', 'date', 'after_or_equal:today'],
+            'date' => ['required', 'date', 'after_or_equal:'.$minDate],
             'time' => ['required', Rule::in($timeSlots)],
         ], [
             'date.required' => 'Debes seleccionar la fecha de la clase.',
-            'date.after_or_equal' => 'La fecha no puede ser anterior a hoy.',
+            'date.after_or_equal' => $this->sameDayCutoff->isSameDayBlocked()
+                ? $this->sameDayCutoff->message()
+                : 'La fecha no puede ser anterior a hoy.',
             'time.required' => 'Debes seleccionar la hora de inicio.',
             'time.in' => 'La hora seleccionada no es válida.',
             'instructor_id.required' => 'Debes seleccionar un instructor.',

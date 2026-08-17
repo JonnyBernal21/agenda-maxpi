@@ -24,6 +24,59 @@ class Reservas extends Model
     }
 
     /**
+     * @return list<string>
+     */
+    public static function halfHourTimes(): array
+    {
+        $times = [];
+
+        for ($hour = 8; $hour <= 19; $hour++) {
+            $times[] = sprintf('%02d:00', $hour);
+
+            if ($hour < 19) {
+                $times[] = sprintf('%02d:30', $hour);
+            }
+        }
+
+        return $times;
+    }
+
+    public static function normalizeTime(string $time): string
+    {
+        return substr($time, 0, 5);
+    }
+
+    public static function timeToMinutes(string $time): int
+    {
+        [$hour, $minute] = array_map('intval', explode(':', self::normalizeTime($time)));
+
+        return ($hour * 60) + $minute;
+    }
+
+    public static function minutesToTime(int $minutes): string
+    {
+        $hour = intdiv(max(0, $minutes), 60);
+        $minute = $minutes % 60;
+
+        return sprintf('%02d:%02d', $hour, $minute);
+    }
+
+    public static function slotEndTime(string $time): string
+    {
+        return self::minutesToTime(self::timeToMinutes($time) + self::CLASS_DURATION_MINUTES);
+    }
+
+    public static function slotsOverlap(string $firstTime, string $secondTime): bool
+    {
+        $firstStart = self::timeToMinutes($firstTime);
+        $firstEnd = $firstStart + self::CLASS_DURATION_MINUTES;
+        $secondStart = self::timeToMinutes($secondTime);
+        $secondEnd = $secondStart + self::CLASS_DURATION_MINUTES;
+
+        return $firstStart < $secondEnd && $firstEnd > $secondStart;
+    }
+
+    /**
      * @var list<string>
      */
     protected $fillable = [

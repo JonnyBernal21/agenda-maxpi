@@ -142,5 +142,5 @@
 @endsection
 
 @push('scripts')
-    @vite(['resources/js/student-booking.js', 'resources/js/student-calendar.js', 'resources/js/flash-alerts.js'])
+    @vite(['resources/js/student-booking.js', 'resources/js/student-calendar.js'])
 @endpush

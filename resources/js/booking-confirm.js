@@ -71,13 +71,28 @@ export async function confirmAgendarClase({
 
 /**
  * @param {string} message
+ * @param {string} [title]
  */
-export function showBookingSuccess(message) {
+export function showBookingSuccess(message, title = '¡Reserva creada!') {
     return Swal.fire({
-        title: '¡Reserva creada!',
+        title,
         text: message,
         icon: 'success',
         confirmButtonText: 'Entendido',
+        confirmButtonColor: CONFIRM_COLOR,
+        customClass: {
+            popup: 'swal-booking-popup',
+            title: 'swal-booking-title',
+        },
+    });
+}
+
+export function showBookingError(message, title = 'No se pudo completar') {
+    return Swal.fire({
+        title,
+        text: message,
+        icon: 'error',
+        confirmButtonText: 'Cerrar',
         confirmButtonColor: CONFIRM_COLOR,
         customClass: {
             popup: 'swal-booking-popup',
@@ -99,17 +114,7 @@ export function initFlashAlerts() {
     if (type === 'success') {
         showBookingSuccess(message);
     } else if (type === 'error') {
-        Swal.fire({
-            title: 'No se pudo completar',
-            text: message,
-            icon: 'error',
-            confirmButtonText: 'Cerrar',
-            confirmButtonColor: CONFIRM_COLOR,
-            customClass: {
-                popup: 'swal-booking-popup',
-                title: 'swal-booking-title',
-            },
-        });
+        showBookingError(message);
     }
 }
 

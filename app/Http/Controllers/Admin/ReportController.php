@@ -16,15 +16,40 @@ class ReportController extends Controller
 
     public function index(Request $request): View
     {
-        $date = $request->filled('date')
-            ? Carbon::parse($request->string('date')->toString())->startOfDay()
-            : now()->startOfDay();
+        $today = now()->startOfDay();
+        $legacyDate = $request->filled('date') ? $this->parseDate($request->string('date')->toString()) : null;
 
-        $report = $this->dailyReport->forDate($date);
+        $from = $this->parseDate($request->input('from'))
+            ?? $legacyDate
+            ?? $today->copy();
+
+        $to = $this->parseDate($request->input('to'))
+            ?? $legacyDate
+            ?? $from->copy();
+
+        if ($to->lt($from)) {
+            [$from, $to] = [$to, $from];
+        }
+
+        $report = $this->dailyReport->forRange($from, $to);
 
         return view('admin.reports.index', [
             'report' => $report,
-            'selectedDate' => $report['date'],
+            'from' => $report['from'],
+            'to' => $report['to'],
         ]);
+    }
+
+    private function parseDate(?string $value): ?Carbon
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

@@ -102,7 +102,7 @@
                     <div class="stat-card__icon mb-0 mt-1"><i class="bi bi-calendar3"></i></div>
                     <div>
                         <h2 class="h5 fw-semibold mb-1">Calendario de clases</h2>
-                        <p class="text-muted small mb-0">Bloques verdes = horarios libres. Clic para agendar.</p>
+                        <p class="text-muted small mb-0">Bloques verdes = horarios libres. Arrastra una clase para cambiar fecha y hora.</p>
                     </div>
                 </div>
                 @include('admin.partials.calendar-legend')
@@ -113,11 +113,13 @@
                 id="admin-calendar"
                 data-events-url="{{ route('admin.calendar.events') }}"
                 data-confirm-url="{{ url('admin/reservas') }}"
+                data-min-date="{{ $minBookableDate }}"
+                data-same-day-message="{{ $sameDayScheduleMessage }}"
             ></div>
             <div class="px-3 pb-3 pt-2 border-top">
                 <div id="adminCalendarHint" class="alert alert-info mb-0">
                     <i class="bi bi-hand-index-thumb me-1"></i>
-                    Haz clic en un bloque <strong>verde</strong> para agendar, o en una clase para ver detalle y cambiar su estado.
+                    Haz clic en un bloque <strong>verde</strong> para agendar. Arrastra una clase para cambiar su fecha u horario.
                 </div>
             </div>
         </div>
@@ -171,6 +173,56 @@
                     >
                         <i class="bi bi-check2-all"></i>
                         Completada
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div
+        class="modal fade"
+        id="rescheduleClassModal"
+        tabindex="-1"
+        aria-labelledby="rescheduleClassModalLabel"
+        aria-hidden="true"
+        data-bs-backdrop="static"
+    >
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content--stack">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-semibold d-flex align-items-center" id="rescheduleClassModalLabel">
+                        <span class="modal-title-icon"><i class="bi bi-arrows-move"></i></span>
+                        Confirmar cambio de horario
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        ¿Mover la clase de
+                        <strong id="rescheduleModalStudent">este alumno</strong>?
+                    </p>
+                    <div class="reschedule-compare">
+                        <div class="reschedule-compare__col">
+                            <span class="reschedule-compare__label">Actual</span>
+                            <span class="reschedule-compare__date" id="rescheduleFromDate">—</span>
+                            <span class="reschedule-compare__time" id="rescheduleFromTime">—</span>
+                        </div>
+                        <div class="reschedule-compare__arrow" aria-hidden="true">
+                            <i class="bi bi-arrow-right"></i>
+                        </div>
+                        <div class="reschedule-compare__col reschedule-compare__col--next">
+                            <span class="reschedule-compare__label">Nuevo</span>
+                            <span class="reschedule-compare__date" id="rescheduleToDate">—</span>
+                            <span class="reschedule-compare__time" id="rescheduleToTime">—</span>
+                        </div>
+                    </div>
+                    <div id="rescheduleModalError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+                </div>
+                <div class="modal-footer flex-wrap gap-2">
+                    <button type="button" class="btn btn-brand-outline" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="confirmRescheduleBtn" class="btn btn-brand d-flex align-items-center gap-2">
+                        <i class="bi bi-check-circle"></i>
+                        Confirmar cambio
                     </button>
                 </div>
             </div>

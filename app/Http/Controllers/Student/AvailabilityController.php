@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Student;
 use App\Http\Controllers\Controller;
 use App\Models\Reservas;
 use App\Services\ReservaAvailabilityService;
+use App\Services\SameDayScheduleCutoff;
 use App\Services\StudentSlotAvailabilityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class AvailabilityController extends Controller
     public function __construct(
         private readonly ReservaAvailabilityService $availability,
         private readonly StudentSlotAvailabilityService $slots,
+        private readonly SameDayScheduleCutoff $sameDayCutoff,
     ) {}
 
     public function check(Request $request): JsonResponse
@@ -42,7 +44,7 @@ class AvailabilityController extends Controller
     public function options(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'date' => ['required', 'date', 'after_or_equal:today'],
+            'date' => ['required', 'date', 'after_or_equal:'.$this->sameDayCutoff->minBookableDate()],
             'time' => ['required', Rule::in(Reservas::availableTimes())],
         ]);
 

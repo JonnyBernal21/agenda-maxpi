@@ -20,6 +20,8 @@ class UserSeeder extends Seeder
             ]
         );
 
-        User::factory(3)->create();
+        if (! app()->isProduction()) {
+            User::factory(3)->create();
+        }
     }
 }

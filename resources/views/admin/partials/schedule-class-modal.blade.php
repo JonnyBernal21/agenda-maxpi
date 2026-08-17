@@ -50,25 +50,23 @@
                         <label class="form-label fw-semibold">
                             <i class="bi bi-search me-1"></i>Alumno
                         </label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white text-muted border-end-0">
-                                <i class="bi bi-person"></i>
-                            </span>
-                            <input
-                                type="text"
-                                id="studentSearchInput"
-                                class="form-control border-start-0 ps-0"
-                                placeholder="Nombre o apellido del alumno"
-                                autocomplete="off"
-                                value="{{ old('_student_search') }}"
-                            >
-                            <button type="button" class="btn btn-brand-outline" id="studentSearchBtn">
-                                Verificar
-                            </button>
+                        <div class="student-search">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white text-muted border-end-0">
+                                    <i class="bi bi-person"></i>
+                                </span>
+                                <input
+                                    type="text"
+                                    id="studentSearchInput"
+                                    class="form-control border-start-0 ps-0"
+                                    placeholder="Nombre o apellido del alumno"
+                                    autocomplete="off"
+                                    value="{{ old('_student_search') }}"
+                                >
+                            </div>
+                            <div class="form-text">Escribe al menos 4 letras para ver alumnos relacionados.</div>
+                            <div id="studentSearchResults" class="list-group student-search-results d-none" role="listbox"></div>
                         </div>
-                        <div class="form-text">Escribe el nombre y verifica si el alumno está registrado.</div>
-
-                        <div id="studentSearchResults" class="list-group mt-2 d-none"></div>
 
                         <div id="studentSelectedAlert" class="alert alert-success mt-3 d-none" role="alert">
                             <strong>Alumno seleccionado:</strong>
@@ -134,7 +132,7 @@
                                             value="{{ $vehicle->id }}"
                                             @selected(old('vehicle_id') == $vehicle->id)
                                         >
-                                            {{ $vehicle->modelo }} — {{ $vehicle->plate }}
+                                            {{ $vehicle->optionLabel() }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -150,7 +148,7 @@
                                     id="reserva_date"
                                     name="date"
                                     value="{{ old('date') }}"
-                                    min="{{ now()->format('Y-m-d') }}"
+                                    min="{{ $minBookableDate }}"
                                     class="form-control @error('date') is-invalid @enderror"
                                     required
                                 >
@@ -168,31 +166,16 @@
                                     required
                                 >
                                     <option value="">Seleccionar hora</option>
-                                    @foreach ($timeSlots as $slot)
+                                    @foreach (\App\Models\Reservas::halfHourTimes() as $slot)
                                         <option value="{{ $slot }}" @selected(old('time') === $slot)>
-                                            {{ $slot }} (2 horas)
+                                            {{ \Illuminate\Support\Carbon::createFromFormat('H:i', $slot)->format('g:i A') }} (2 h)
                                         </option>
                                     @endforeach
                                 </select>
                                 @error('time')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="reserva_status" class="form-label">Estado</label>
-                                <select
-                                    id="reserva_status"
-                                    name="status"
-                                    class="form-select @error('status') is-invalid @enderror"
-                                    required
-                                >
-                                    <option value="pendiente" @selected(old('status', 'pendiente') === 'pendiente')>Pendiente</option>
-                                    <option value="confirmada" @selected(old('status') === 'confirmada')>Confirmada</option>
-                                </select>
-                                @error('status')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <p class="small text-muted mt-2 mb-0">De 8:00 AM a 7:00 PM, cada 30 minutos. Cada clase dura 2 horas.</p>
                             </div>
                         </div>
                     </div>

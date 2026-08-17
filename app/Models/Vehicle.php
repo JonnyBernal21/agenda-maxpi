@@ -30,4 +30,14 @@ class Vehicle extends Model
     {
         return $this->hasMany(Reservas::class, 'vehicle_id');
     }
+
+    public function typeLabel(): string
+    {
+        return $this->type === 'automatico' ? 'Automático' : 'Manual';
+    }
+
+    public function optionLabel(): string
+    {
+        return "{$this->modelo} ({$this->plate}) · {$this->typeLabel()}";
+    }
 }

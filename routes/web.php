@@ -39,18 +39,25 @@ Route::middleware('auth:web')->group(function () {
     Route::get('/admin/alumnos', [AdminStudentController::class, 'index'])->name('admin.students.index');
     Route::get('/admin/instructores', [AdminInstructorController::class, 'index'])->name('admin.instructors.index');
     Route::post('/admin/instructors', [InstructorController::class, 'store'])->name('admin.instructors.store');
+    Route::put('/admin/instructors/{instructor}', [InstructorController::class, 'update'])->name('admin.instructors.update');
     Route::get('/admin/reportes', [AdminReportController::class, 'index'])->name('admin.reports.index');
 
     Route::get('/admin/vehiculos', [AdminVehicleController::class, 'index'])->name('admin.vehicles.index');
     Route::post('/admin/vehicles', [VehicleController::class, 'store'])->name('admin.vehicles.store');
 
     Route::get('/admin/students/search', [StudentController::class, 'search'])->name('admin.students.search');
+    Route::get('/admin/students/{student}/horarios', [StudentController::class, 'schedule'])->name('admin.students.schedule');
     Route::post('/admin/students', [StudentController::class, 'store'])->name('admin.students.store');
+    Route::put('/admin/students/{student}', [StudentController::class, 'update'])->name('admin.students.update');
+    Route::post('/admin/students/{student}/enviar-horarios', [StudentController::class, 'sendSchedule'])->name('admin.students.schedule-email');
     Route::post('/admin/reservas', [AdminReservaController::class, 'store'])->name('admin.reservas.store');
+    Route::post('/admin/reservas/horarios', [AdminReservaController::class, 'storeSchedule'])->name('admin.reservas.schedule');
     Route::patch('/admin/reservas/{reserva}/confirm', [AdminReservaController::class, 'confirm'])->name('admin.reservas.confirm');
     Route::patch('/admin/reservas/{reserva}/complete', [AdminReservaController::class, 'complete'])->name('admin.reservas.complete');
+    Route::patch('/admin/reservas/{reserva}/reschedule', [AdminReservaController::class, 'reschedule'])->name('admin.reservas.reschedule');
     Route::get('/admin/reservas/options', [AdminAvailabilityController::class, 'options'])->name('admin.reservas.options');
     Route::get('/admin/reservas/check', [AdminAvailabilityController::class, 'check'])->name('admin.reservas.check');
+    Route::get('/admin/reservas/instructor-conflicts', [AdminAvailabilityController::class, 'instructorConflicts'])->name('admin.reservas.instructor-conflicts');
 });
 
 Route::middleware('guest:student')->group(function () {

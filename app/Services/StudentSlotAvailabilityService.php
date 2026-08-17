@@ -5,12 +5,15 @@ namespace App\Services;
 use App\Models\Instructor;
 use App\Models\Reservas;
 use App\Models\Vehicle;
-use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
 
 class StudentSlotAvailabilityService
 {
+    public function __construct(
+        private readonly SameDayScheduleCutoff $sameDayCutoff,
+    ) {}
+
     /**
      * @return list<array{
      *     date: string,
@@ -38,13 +41,14 @@ class StudentSlotAvailabilityService
 
         $slots = [];
         $period = CarbonPeriod::create($startDate, $endDate);
-        $today = now()->toDateString();
-        $nowTime = now()->format('H:i');
+        $now = $this->sameDayCutoff->now();
+        $today = $now->toDateString();
+        $nowTime = $now->format('H:i');
 
         foreach ($period as $day) {
             $date = $day->toDateString();
 
-            if ($date < $today) {
+            if ($date < $today || $this->sameDayCutoff->blocksDate($date)) {
                 continue;
             }
 
@@ -82,6 +86,16 @@ class StudentSlotAvailabilityService
      */
     public function availableOptionsForSlot(string $date, string $time): array
     {
+        if ($this->sameDayCutoff->blocksDate($date)) {
+            return [
+                'available' => false,
+                'instructor_ids' => [],
+                'vehicle_ids' => [],
+                'pairs' => [],
+                'cupos' => 0,
+            ];
+        }
+
         $time = $this->normalizeTime($time);
         $instructorIds = Instructor::query()->pluck('id')->all();
         $vehicleIds = Vehicle::query()->pluck('id')->all();
@@ -91,7 +105,6 @@ class StudentSlotAvailabilityService
                 ->active()
                 ->where('date', $date)
                 ->get(['instructor_id', 'vehicle_id', 'date', 'time'])
-                ->filter(fn (Reservas $reserva) => $this->normalizeTime($reserva->time) === $time)
         );
 
         $pairs = [];
@@ -176,11 +189,21 @@ class StudentSlotAvailabilityService
     {
         $instructors = [];
         $vehicles = [];
+        $slotTimes = Reservas::availableTimes();
 
         foreach ($reservas as $reserva) {
-            $time = $this->normalizeTime($reserva->time);
-            $instructors[$this->busyKey($reserva->instructor_id, $reserva->date, $time)] = true;
-            $vehicles[$this->busyKey($reserva->vehicle_id, $reserva->date, $time)] = true;
+            $reservaTime = $this->normalizeTime($reserva->time);
+
+            foreach ($slotTimes as $slotTime) {
+                $slotTime = $this->normalizeTime($slotTime);
+
+                if (! Reservas::slotsOverlap($reservaTime, $slotTime)) {
+                    continue;
+                }
+
+                $instructors[$this->busyKey($reserva->instructor_id, $reserva->date, $slotTime)] = true;
+                $vehicles[$this->busyKey($reserva->vehicle_id, $reserva->date, $slotTime)] = true;
+            }
         }
 
         return [

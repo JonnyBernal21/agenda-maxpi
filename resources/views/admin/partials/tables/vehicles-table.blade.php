@@ -17,7 +17,7 @@
                 <td>{{ $vehicle->año }}</td>
                 <td>{{ $vehicle->color }}</td>
                 <td><span class="table-badge">{{ $vehicle->plate }}</span></td>
-                <td>{{ ucfirst($vehicle->type) }}</td>
+                <td>{{ $vehicle->typeLabel() }}</td>
                 <td>{{ ucfirst(str_replace('_', ' ', $vehicle->status)) }}</td>
                 <td>{{ $vehicle->reservas_count }}</td>
             </tr>

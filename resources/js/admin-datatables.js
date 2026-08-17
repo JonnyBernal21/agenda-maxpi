@@ -29,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
             lengthMenu: [10, 25, 50],
             order: [],
             autoWidth: false,
+            columnDefs: [
+                { orderable: false, searchable: false, targets: 'th.no-sort' },
+            ],
             dom: '<"datatable-toolbar d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3"lf>t<"datatable-footer d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mt-3"ip>',
         });
     });
