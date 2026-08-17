@@ -7,6 +7,7 @@ use App\Models\Reservas;
 use App\Models\Student;
 use App\Services\ReservaAvailabilityService;
 use App\Services\SameDayScheduleCutoff;
+use App\Services\StudentMailService;
 use App\Services\StudentScheduleService;
 use App\Support\ReservaSchedulePayload;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +24,7 @@ class ReservaController extends Controller
         private readonly ReservaAvailabilityService $availability,
         private readonly StudentScheduleService $schedules,
         private readonly SameDayScheduleCutoff $sameDayCutoff,
+        private readonly StudentMailService $studentMail,
     ) {}
 
     public function store(Request $request): RedirectResponse
@@ -209,11 +211,13 @@ class ReservaController extends Controller
             : ' con horarios distintos';
 
         $message = "Se agendaron {$created} clases para {$student->fullName()} ({$days}{$timeLabel}).";
+        $emailed = $this->studentMail->sendSchedule($student, $reservas);
 
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => $message,
                 'created' => $created,
+                'emailed' => $emailed,
                 'student' => [
                     'id' => $student->id,
                     'name' => $student->fullName(),
@@ -225,9 +229,13 @@ class ReservaController extends Controller
             ]);
         }
 
+        $flash = $emailed
+            ? $message.' Los horarios se enviaron por correo a '.$student->email.'.'
+            : $message;
+
         return redirect()
             ->to(URL::previous() ?: route('admin.students.index'))
-            ->with('success', $message);
+            ->with('success', $flash);
     }
 
     public function confirm(Reservas $reserva): JsonResponse

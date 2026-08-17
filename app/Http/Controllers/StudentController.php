@@ -2,20 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\StudentScheduleAssignedMail;
 use App\Models\Reservas;
 use App\Models\Student;
-use App\Support\ReservaSchedulePayload;
+use App\Services\StudentMailService;
 use App\Support\ReservaStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 
 class StudentController extends Controller
 {
+    public function __construct(
+        private readonly StudentMailService $studentMail,
+    ) {}
+
     public function search(Request $request): JsonResponse
     {
         $query = trim((string) $request->query('q', ''));
@@ -74,6 +76,7 @@ class StudentController extends Controller
         ]);
 
         $student->load('course');
+        $this->studentMail->sendRegistration($student);
 
         $fallback = URL::previous() ?: route('admin.students.index');
 
@@ -160,34 +163,16 @@ class StudentController extends Controller
 
     public function sendSchedule(Student $student): JsonResponse
     {
-        $student->loadMissing('course');
+        $sent = $this->studentMail->sendSchedule($student);
 
-        $reservas = $student->reservas()
-            ->with(['instructor', 'vehicle'])
-            ->where('status', '!=', 'cancelada')
-            ->orderBy('date')
-            ->orderBy('time')
-            ->get();
-
-        if ($reservas->isEmpty()) {
-            return response()->json([
-                'message' => 'El alumno no tiene horarios asignados para enviar.',
-            ], 422);
-        }
-
-        try {
-            Mail::to($student->email)->send(
-                new StudentScheduleAssignedMail(
-                    $student,
-                    collect(ReservaSchedulePayload::fromReservas($reservas)),
-                )
-            );
-        } catch (\Throwable $exception) {
-            report($exception);
+        if (! $sent) {
+            $hasClasses = $student->reservas()->where('status', '!=', 'cancelada')->exists();
 
             return response()->json([
-                'message' => 'No se pudieron enviar los horarios por correo. Intenta de nuevo.',
-            ], 500);
+                'message' => $hasClasses
+                    ? 'No se pudieron enviar los horarios por correo. Intenta de nuevo.'
+                    : 'El alumno no tiene horarios asignados para enviar.',
+            ], $hasClasses ? 500 : 422);
         }
 
         return response()->json([
