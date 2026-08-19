@@ -73,6 +73,24 @@
                         >
                             <i class="bi bi-pencil"></i>
                         </button>
+                        <form
+                            method="POST"
+                            action="{{ route('admin.instructors.destroy', $instructor) }}"
+                            class="js-soft-delete"
+                            data-name="{{ $instructor->fullName() }}"
+                            data-entity="instructor"
+                        >
+                            @csrf
+                            @method('DELETE')
+                            <button
+                                type="submit"
+                                class="btn btn-brand-outline btn-delete"
+                                title="Eliminar"
+                                aria-label="Eliminar a {{ $instructor->fullName() }}"
+                            >
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
                     </div>
                 </td>
             </tr>

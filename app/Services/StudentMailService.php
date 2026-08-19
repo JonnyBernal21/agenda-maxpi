@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Mail\StudentRegisteredMail;
 use App\Mail\StudentScheduleAssignedMail;
+use App\Models\Reservas;
 use App\Models\Student;
 use App\Support\ReservaSchedulePayload;
 use Illuminate\Mail\Mailable;
@@ -12,15 +12,8 @@ use Illuminate\Support\Facades\Mail;
 
 class StudentMailService
 {
-    public function sendRegistration(Student $student): bool
-    {
-        $student->loadMissing('course');
-
-        return $this->deliver($student->email, new StudentRegisteredMail($student));
-    }
-
     /**
-     * @param  Collection<int, \App\Models\Reservas>|null  $reservas
+     * @param  Collection<int, Reservas>|null  $reservas
      */
     public function sendSchedule(Student $student, ?Collection $reservas = null): bool
     {

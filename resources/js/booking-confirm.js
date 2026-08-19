@@ -101,6 +101,39 @@ export function showBookingError(message, title = 'No se pudo completar') {
     });
 }
 
+/**
+ * @param {{
+ *   name: string,
+ *   entity?: string,
+ * }} options
+ */
+export async function confirmSoftDelete({ name, entity = 'registro' }) {
+    const safeName = escapeHtml(name);
+    const article = entity === 'alumno' || entity === 'instructor' ? 'al' : 'el';
+
+    const result = await Swal.fire({
+        ...swalBookingDefaults,
+        title: `¿Eliminar ${entity}?`,
+        html: `
+            <p class="swal-booking-message">
+                Se desactivará ${article}
+                <span class="swal-booking-highlight">${safeName}</span>
+                y dejará de aparecer en las listas. El historial se conserva.
+            </p>
+        `,
+        icon: 'warning',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        customClass: {
+            ...swalBookingDefaults.customClass,
+            confirmButton: 'swal-booking-btn swal-booking-btn--danger',
+        },
+        confirmButtonColor: '#9f1239',
+    });
+
+    return result.isConfirmed;
+}
+
 export function initFlashAlerts() {
     const el = document.getElementById('app-flash');
 

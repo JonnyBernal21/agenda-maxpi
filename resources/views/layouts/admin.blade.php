@@ -52,6 +52,12 @@
                             Reportes
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center gap-2 @if(request()->routeIs('admin.emails.*')) active @endif" href="{{ route('admin.emails.index') }}">
+                            <i class="bi bi-envelope"></i>
+                            Correos
+                        </a>
+                    </li>
                 </ul>
                 <div class="d-flex align-items-center gap-3">
                     <span class="navbar-text d-none d-sm-inline d-flex align-items-center gap-2">

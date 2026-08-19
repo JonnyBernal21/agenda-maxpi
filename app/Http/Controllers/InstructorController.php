@@ -65,6 +65,16 @@ class InstructorController extends Controller
             ->with('success', "Se actualizó la información de {$instructor->fullName()}.");
     }
 
+    public function destroy(Instructor $instructor): RedirectResponse
+    {
+        $name = $instructor->fullName();
+        $instructor->delete();
+
+        return redirect()
+            ->to(URL::previous() ?: route('admin.instructors.index'))
+            ->with('success', "Se eliminó a {$name} de la lista.");
+    }
+
     /**
      * @return array<string, list<mixed>>
      */

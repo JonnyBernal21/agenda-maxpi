@@ -76,7 +76,6 @@ class StudentController extends Controller
         ]);
 
         $student->load('course');
-        $this->studentMail->sendRegistration($student);
 
         $fallback = URL::previous() ?: route('admin.students.index');
 
@@ -110,6 +109,16 @@ class StudentController extends Controller
         return redirect()
             ->to(URL::previous() ?: route('admin.students.index'))
             ->with('success', "Se actualizó la información de {$student->fullName()}.");
+    }
+
+    public function destroy(Student $student): RedirectResponse
+    {
+        $name = $student->fullName();
+        $student->delete();
+
+        return redirect()
+            ->to(URL::previous() ?: route('admin.students.index'))
+            ->with('success', "Se eliminó a {$name} de la lista.");
     }
 
     public function schedule(Student $student): JsonResponse

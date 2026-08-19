@@ -21,7 +21,8 @@ class ReservaSchedulePayload
      *     end_time_label: string,
      *     schedule_label: string,
      *     instructor: string,
-     *     vehicle: string
+     *     vehicle: string,
+     *     vehicle_type: string
      * }>
      */
     public static function fromReservas(Collection $reservas): array
@@ -49,6 +50,7 @@ class ReservaSchedulePayload
                     'vehicle' => $reserva->vehicle
                         ? trim($reserva->vehicle->modelo.' ('.$reserva->vehicle->plate.')')
                         : '—',
+                    'vehicle_type' => $reserva->vehicle?->typeLabel() ?: '—',
                 ];
             })
             ->values()

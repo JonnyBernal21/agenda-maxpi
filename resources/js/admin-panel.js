@@ -1,5 +1,5 @@
 import * as bootstrap from 'bootstrap';
-import { showBookingError, showBookingSuccess } from './booking-confirm';
+import { confirmSoftDelete, showBookingError, showBookingSuccess } from './booking-confirm';
 
 let openScheduleSummary = () => {};
 
@@ -1476,10 +1476,178 @@ const initInstructorAdmin = () => {
     });
 };
 
+const initVehicleAdmin = () => {
+    const fieldNames = ['modelo', 'año', 'color', 'plate', 'type', 'status', 'owner', 'owner_id'];
+    const modalEl = document.getElementById('addVehicleModal');
+    const form = document.getElementById('vehicleAdminForm');
+    const vehicleModal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+    let openingVehicleEdit = false;
+
+    const setFieldValue = (name, value) => {
+        const field = form?.querySelector(`[name="${name}"]`);
+
+        if (field) {
+            field.value = value ?? '';
+        }
+    };
+
+    const clearVehicleInvalid = () => {
+        form?.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+        document.getElementById('vehicleFormErrorAlert')?.classList.add('d-none');
+    };
+
+    const setVehicleCreateMode = ({ clearFields = true } = {}) => {
+        if (!form || !modalEl) {
+            return;
+        }
+
+        form.action = modalEl.dataset.storeUrl;
+        const methodInput = document.getElementById('vehicleFormSpoofMethod');
+        if (methodInput) {
+            methodInput.disabled = true;
+        }
+
+        setFieldValue('_form', 'vehicle');
+        setFieldValue('editing_id', '');
+
+        const title = document.getElementById('vehicleFormTitle');
+        const icon = document.getElementById('vehicleFormIcon');
+        const submitLabel = document.getElementById('vehicleFormSubmitLabel');
+
+        if (title) {
+            title.textContent = 'Agregar vehículo';
+        }
+
+        if (icon) {
+            icon.className = 'bi bi-car-front';
+        }
+
+        if (submitLabel) {
+            submitLabel.textContent = 'Guardar vehículo';
+        }
+
+        if (clearFields) {
+            fieldNames.forEach((name) => {
+                if (name === 'owner') {
+                    setFieldValue(name, 'Autoescuela MaxPi');
+                    return;
+                }
+
+                if (name === 'owner_id') {
+                    setFieldValue(name, 'MAXPI-001');
+                    return;
+                }
+
+                if (name === 'status') {
+                    setFieldValue(name, 'disponible');
+                    return;
+                }
+
+                setFieldValue(name, '');
+            });
+            clearVehicleInvalid();
+        }
+    };
+
+    const setVehicleEditMode = (vehicleId) => {
+        if (!form || !modalEl || !vehicleId) {
+            return;
+        }
+
+        form.action = `${modalEl.dataset.updateBase}/${vehicleId}`;
+        const methodInput = document.getElementById('vehicleFormSpoofMethod');
+        if (methodInput) {
+            methodInput.disabled = false;
+            methodInput.value = 'PUT';
+        }
+
+        setFieldValue('_form', 'vehicle-edit');
+        setFieldValue('editing_id', vehicleId);
+
+        const title = document.getElementById('vehicleFormTitle');
+        const icon = document.getElementById('vehicleFormIcon');
+        const submitLabel = document.getElementById('vehicleFormSubmitLabel');
+
+        if (title) {
+            title.textContent = 'Editar vehículo';
+        }
+
+        if (icon) {
+            icon.className = 'bi bi-pencil';
+        }
+
+        if (submitLabel) {
+            submitLabel.textContent = 'Guardar cambios';
+        }
+    };
+
+    const fillVehicleForm = (button) => {
+        setFieldValue('modelo', button.dataset.modelo || '');
+        setFieldValue('año', button.dataset.anio || '');
+        setFieldValue('color', button.dataset.color || '');
+        setFieldValue('plate', button.dataset.plate || '');
+        setFieldValue('type', button.dataset.type || '');
+        setFieldValue('status', button.dataset.status || 'disponible');
+        setFieldValue('owner', button.dataset.owner || 'Autoescuela MaxPi');
+        setFieldValue('owner_id', button.dataset.ownerId || 'MAXPI-001');
+        clearVehicleInvalid();
+    };
+
+    if (modalEl?.dataset.editingId) {
+        setVehicleEditMode(modalEl.dataset.editingId);
+    }
+
+    modalEl?.addEventListener('hidden.bs.modal', () => {
+        if (openingVehicleEdit) {
+            return;
+        }
+
+        setVehicleCreateMode();
+    });
+
+    document.addEventListener('click', (event) => {
+        const editBtn = event.target.closest('.js-edit-vehicle');
+
+        if (!editBtn || !vehicleModal) {
+            return;
+        }
+
+        event.preventDefault();
+        openingVehicleEdit = true;
+        fillVehicleForm(editBtn);
+        setVehicleEditMode(editBtn.dataset.id);
+        vehicleModal.show();
+        openingVehicleEdit = false;
+    });
+};
+
+const initSoftDelete = () => {
+    document.addEventListener('submit', async (event) => {
+        const form = event.target.closest('form.js-soft-delete');
+
+        if (!form) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const confirmed = await confirmSoftDelete({
+            name: form.dataset.name || 'este registro',
+            entity: form.dataset.entity || 'registro',
+        });
+
+        if (confirmed) {
+            form.submit();
+        }
+    });
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     initDocumentUploads();
     initStudentAdmin();
     initInstructorAdmin();
+    initVehicleAdmin();
+    initSoftDelete();
 
     const modals = [
         { id: 'addStudentModal', form: 'student' },

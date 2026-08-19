@@ -2,18 +2,19 @@
 
 namespace App\Models;
 
-use Database\Factories\StudentFactory;
 use App\Models\Concerns\HasUppercasePersonFields;
+use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class Student extends Authenticatable
 {
     /** @use HasFactory<StudentFactory> */
-    use HasFactory, HasUppercasePersonFields, Notifiable;
+    use HasFactory, HasUppercasePersonFields, Notifiable, SoftDeletes;
 
     /**
      * @var list<string>

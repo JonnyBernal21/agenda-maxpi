@@ -27,7 +27,7 @@ class StudentScheduleAssignedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Tus horarios de clases — '.config('app.name'),
+            subject: 'Registro y horarios de clase — MaxPi Escuela de Manejo',
         );
     }
 

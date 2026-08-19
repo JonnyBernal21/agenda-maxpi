@@ -4,25 +4,30 @@
     tabindex="-1"
     aria-labelledby="addVehicleModalLabel"
     aria-hidden="true"
-    data-auto-open="{{ ($errors->any() && old('_form') === 'vehicle') ? 'true' : 'false' }}"
+    data-store-url="{{ route('admin.vehicles.store') }}"
+    data-update-base="{{ url('admin/vehicles') }}"
+    data-editing-id="{{ old('_form') === 'vehicle-edit' ? old('editing_id') : '' }}"
+    data-auto-open="{{ ($errors->any() && in_array(old('_form'), ['vehicle', 'vehicle-edit'], true)) ? 'true' : 'false' }}"
 >
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <form method="POST" action="{{ route('admin.vehicles.store') }}" class="modal-form-layout">
+            <form method="POST" action="{{ route('admin.vehicles.store') }}" class="modal-form-layout" id="vehicleAdminForm">
                 @csrf
-                <input type="hidden" name="_form" value="vehicle">
+                <input type="hidden" name="_method" id="vehicleFormSpoofMethod" value="PUT" disabled>
+                <input type="hidden" name="_form" id="vehicleFormType" value="{{ old('_form', 'vehicle') }}">
+                <input type="hidden" name="editing_id" id="vehicleEditingId" value="{{ old('editing_id') }}">
 
                 <div class="modal-header">
                     <h5 class="modal-title fw-semibold d-flex align-items-center" id="addVehicleModalLabel">
-                        <span class="modal-title-icon"><i class="bi bi-car-front"></i></span>
-                        Agregar vehículo
+                        <span class="modal-title-icon"><i class="bi bi-car-front" id="vehicleFormIcon"></i></span>
+                        <span id="vehicleFormTitle">Agregar vehículo</span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
 
                 <div class="modal-body">
-                    @if ($errors->any() && old('_form') === 'vehicle')
-                        <div class="alert alert-danger" role="alert">
+                    @if ($errors->any() && in_array(old('_form'), ['vehicle', 'vehicle-edit'], true))
+                        <div class="alert alert-danger" role="alert" id="vehicleFormErrorAlert">
                             Revisa los campos marcados e intenta de nuevo.
                         </div>
                     @endif
@@ -162,9 +167,9 @@
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-brand-outline" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-brand d-flex align-items-center gap-2">
+                    <button type="submit" class="btn btn-brand d-flex align-items-center gap-2" id="vehicleFormSubmit">
                         <i class="bi bi-check-lg"></i>
-                        Guardar vehículo
+                        <span id="vehicleFormSubmitLabel">Guardar vehículo</span>
                     </button>
                 </div>
             </form>
