@@ -23,8 +23,8 @@ class ReservaCalendarColors
                 'class' => 'fc-event-completada',
             ],
             'cancelada' => [
-                'background' => '#94a3b8',
-                'border' => '#64748b',
+                'background' => '#dc2626',
+                'border' => '#b91c1c',
                 'text' => '#ffffff',
                 'class' => 'fc-event-cancelada',
             ],

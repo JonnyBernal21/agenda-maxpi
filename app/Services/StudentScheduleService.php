@@ -63,7 +63,7 @@ class StudentScheduleService
         array $timesByDate = [],
         array $vehiclesByDate = [],
     ): Collection {
-        $student->load('course');
+        $student->load(['course', 'extraClasses']);
 
         if (! $student->course) {
             throw ValidationException::withMessages([

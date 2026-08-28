@@ -57,6 +57,38 @@ const formatTimeLabel = (time) => {
     return `${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
 };
 
+const buildScheduleWhatsappMessage = ({ name, course, classes }) => {
+    const list = (Array.isArray(classes) ? classes : []).filter((item) => item.status !== 'cancelada');
+    const lines = [
+        `Hola, ${name || 'alumno'}`,
+        '',
+        'Te confirmamos tus horarios de Autoescuela MaxPi.',
+        `Curso: ${course || 'Sin curso'}`,
+        `Clases: ${list.length}`,
+        '',
+    ];
+
+    list.forEach((item, index) => {
+        const date = String(item.date ?? '').slice(0, 10);
+        const weekday = item.weekday || weekdayName(date);
+        const dateLabel = item.date_label || formatFullDate(date);
+        const timeRange =
+            item.schedule_label ||
+            (item.time && item.end_time
+                ? `${formatTimeLabel(item.time)} – ${formatTimeLabel(item.end_time)}`
+                : item.time || '—');
+        const vehicle = item.vehicle_type || item.vehicle || 'Vehículo';
+
+        lines.push(`${index + 1}. ${weekday}, ${dateLabel}`);
+        lines.push(`   ${timeRange} · ${vehicle}`);
+        lines.push('');
+    });
+
+    lines.push('Cada clase dura 2 horas. Si necesitas un cambio de horario, contacta a la escuela.');
+
+    return { message: lines.join('\n'), count: list.length };
+};
+
 const addDays = (isoDate, amount) => {
     const [year, month, day] = isoDate.split('-').map(Number);
     const date = new Date(year, month - 1, day);
@@ -620,7 +652,54 @@ const initDocumentUploads = () => {
         const previewImage = wrapper.querySelector('[data-doc-image]');
         const previewIcon = wrapper.querySelector('[data-doc-icon]');
         const filename = wrapper.querySelector('[data-doc-filename]');
+        const errorEl = wrapper.querySelector('[data-doc-error]');
+        const maxKb = Number(wrapper.dataset.maxKb || 5120);
+        const allowsPdf = wrapper.dataset.allowsPdf === 'true';
+        const formatLabel = wrapper.dataset.formatLabel || (allowsPdf ? 'JPG, PNG, WEBP o PDF' : 'JPG, PNG o WEBP');
         let previewUrl = '';
+
+        const setError = (message) => {
+            wrapper.classList.toggle('is-invalid', Boolean(message));
+
+            if (!errorEl) {
+                return;
+            }
+
+            errorEl.textContent = message || '';
+            errorEl.classList.toggle('d-none', !message);
+            errorEl.classList.toggle('d-block', Boolean(message));
+        };
+
+        const fileExtension = (file) => String(file?.name || '').split('.').pop()?.toLowerCase() || '';
+
+        const validateFile = (file) => {
+            if (!file) {
+                return '';
+            }
+
+            const extension = fileExtension(file);
+            const type = String(file.type || '').toLowerCase();
+            const blocked = ['heic', 'heif', 'gif', 'bmp', 'tiff', 'tif', 'avif', 'svg'];
+            const imageOk = ['jpg', 'jpeg', 'png', 'webp'].includes(extension)
+                || ['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png', 'image/webp'].includes(type);
+            const pdfOk = allowsPdf && (extension === 'pdf' || type === 'application/pdf');
+
+            if (blocked.includes(extension) || type === 'image/heic' || type === 'image/heif') {
+                return `Este formato (${extension.toUpperCase() || 'no válido'}) no se admite. Usa ${formatLabel}.`;
+            }
+
+            if (!imageOk && !pdfOk) {
+                return `Formato no válido. Usa ${formatLabel}.`;
+            }
+
+            if (file.size > maxKb * 1024) {
+                const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+
+                return `El archivo pesa ${sizeMb} MB. El máximo es ${Math.round(maxKb / 1024)} MB.`;
+            }
+
+            return '';
+        };
 
         const clearPreview = () => {
             if (previewUrl) {
@@ -642,6 +721,15 @@ const initDocumentUploads = () => {
 
         const assignFile = (file) => {
             if (!file || !fileInput) {
+                return;
+            }
+
+            const message = validateFile(file);
+
+            if (message) {
+                fileInput.value = '';
+                setError(message);
+                clearPreview();
                 return;
             }
 
@@ -695,21 +783,50 @@ const initDocumentUploads = () => {
             cameraInput.value = '';
         });
 
+        fileInput?.form?.addEventListener('submit', (event) => {
+            const file = fileInput.files?.[0];
+
+            if (!file) {
+                return;
+            }
+
+            const message = validateFile(file);
+
+            if (message) {
+                event.preventDefault();
+                setError(message);
+                fileInput.focus();
+            }
+        });
+
         fileInput?.addEventListener('change', () => {
             const file = fileInput.files?.[0];
 
-            if (file) {
-                showPreview(file);
-                wrapper.classList.remove('is-invalid');
-            } else {
+            if (!file) {
                 clearPreview();
+                return;
             }
+
+            const message = validateFile(file);
+
+            if (message) {
+                fileInput.value = '';
+                setError(message);
+                clearPreview();
+                return;
+            }
+
+            setError('');
+            showPreview(file);
+            wrapper.classList.remove('is-invalid');
         });
 
         wrapper.querySelector('[data-doc-clear]')?.addEventListener('click', () => {
             if (fileInput) {
                 fileInput.value = '';
             }
+
+            setError('');
 
             if (wrapper.dataset.existingUrl) {
                 wrapper.showExistingDoc?.(wrapper.dataset.existingUrl, wrapper.dataset.existingLabel);
@@ -733,6 +850,7 @@ const initDocumentUploads = () => {
             }
 
             wrapper.classList.remove('is-invalid');
+            setError('');
             clearPreview();
         };
 
@@ -790,6 +908,13 @@ const toIsoDate = (date) => {
     return `${year}-${month}-${day}`;
 };
 
+const addCalendarDays = (date, amount) =>
+    new Date(date.getFullYear(), date.getMonth(), date.getDate() + amount);
+
+const weekMonday = (date) => addCalendarDays(date, -((date.getDay() + 6) % 7));
+
+const weekSunday = (date) => addCalendarDays(weekMonday(date), 6);
+
 const initScheduleSummary = () => {
     const modalEl = document.getElementById('scheduleSummaryModal');
 
@@ -804,8 +929,10 @@ const initScheduleSummary = () => {
     const listBody = document.getElementById('scheduleSummaryListBody');
     const prevBtn = document.getElementById('scheduleSummaryPrev');
     const nextBtn = document.getElementById('scheduleSummaryNext');
+    const printMonthsEl = document.getElementById('scheduleSummaryPrintMonths');
     const printBtn = document.getElementById('scheduleSummaryPrint');
     const emailBtn = document.getElementById('scheduleSummaryEmail');
+    const whatsappBtn = document.getElementById('scheduleSummaryWhatsapp');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const state = {
@@ -850,6 +977,86 @@ const initScheduleSummary = () => {
 
         return { min: Math.min(...months), max: Math.max(...months) };
     };
+
+    const classMonths = () => {
+        const unique = new Map();
+
+        state.classes.forEach((item) => {
+            const date = parseIso(item.date);
+            unique.set(date.getFullYear() * 12 + date.getMonth(), {
+                year: date.getFullYear(),
+                month: date.getMonth(),
+            });
+        });
+
+        return [...unique.entries()]
+            .sort((left, right) => left[0] - right[0])
+            .map(([, value]) => value);
+    };
+
+    const monthTitle = (year, month) =>
+        new Date(year, month, 1).toLocaleDateString('es-MX', {
+            month: 'long',
+            year: 'numeric',
+        });
+
+    const classChipsHtml = (items) =>
+        items
+            .map(
+                (item) => `
+                    <span class="schedule-month__chip" title="${escapeHtml(item.instructor)} · ${escapeHtml(item.vehicle)}">
+                        ${escapeHtml(formatTimeLabel(item.time))}
+                    </span>
+                `
+            )
+            .join('');
+
+    const monthGridHtml = (year, month, grouped) => {
+        const first = new Date(year, month, 1);
+        const last = new Date(year, month + 1, 0);
+        const end = weekSunday(last);
+        const cells = [];
+
+        for (let cursor = weekMonday(first); cursor.getTime() <= end.getTime(); cursor = addCalendarDays(cursor, 1)) {
+            const iso = toIsoDate(cursor);
+            const items = grouped.get(iso) || [];
+            const inMonth = cursor.getMonth() === month;
+            const dayClass = [
+                'schedule-month__day',
+                inMonth ? '' : 'is-outside',
+                items.length ? 'has-class' : '',
+            ]
+                .filter(Boolean)
+                .join(' ');
+
+            cells.push(`
+                <div class="${dayClass}">
+                    <span class="schedule-month__num">${cursor.getDate()}</span>
+                    <div class="schedule-month__events">${classChipsHtml(items)}</div>
+                </div>
+            `);
+        }
+
+        return cells.join('');
+    };
+
+    const printMonthBlockHtml = (year, month, grouped) => `
+        <div class="schedule-month schedule-month--print">
+            <div class="schedule-month__nav">
+                <h6 class="schedule-month__title text-capitalize mb-0">${escapeHtml(monthTitle(year, month))}</h6>
+            </div>
+            <div class="schedule-month__weekdays">
+                <span>Lun</span>
+                <span>Mar</span>
+                <span>Mié</span>
+                <span>Jue</span>
+                <span>Vie</span>
+                <span>Sáb</span>
+                <span>Dom</span>
+            </div>
+            <div class="schedule-month__grid">${monthGridHtml(year, month, grouped)}</div>
+        </div>
+    `;
 
     const renderList = () => {
         if (!listBody) {
@@ -897,49 +1104,15 @@ const initScheduleSummary = () => {
             nextBtn.disabled = cursor >= bounds.max;
         }
 
-        monthLabel.textContent = new Date(state.year, state.month, 1).toLocaleDateString('es-MX', {
-            month: 'long',
-            year: 'numeric',
-        });
-
-        const first = new Date(state.year, state.month, 1);
-        const lastDate = new Date(state.year, state.month + 1, 0).getDate();
-        const startPad = (first.getDay() + 6) % 7;
-        const grouped = classesByDate();
-        const cells = [];
-
-        for (let index = 0; index < startPad; index += 1) {
-            cells.push('<div class="schedule-month__day is-outside"></div>');
-        }
-
-        for (let day = 1; day <= lastDate; day += 1) {
-            const iso = toIsoDate(new Date(state.year, state.month, day));
-            const items = grouped.get(iso) || [];
-            const chips = items
-                .map(
-                    (item) => `
-                        <span class="schedule-month__chip" title="${escapeHtml(item.instructor)} · ${escapeHtml(item.vehicle)}">
-                            ${escapeHtml(formatTimeLabel(item.time))}
-                        </span>
-                    `
-                )
-                .join('');
-
-            cells.push(`
-                <div class="schedule-month__day${items.length ? ' has-class' : ''}">
-                    <span class="schedule-month__num">${day}</span>
-                    <div class="schedule-month__events">${chips}</div>
-                </div>
-            `);
-        }
-
-        gridEl.innerHTML = cells.join('');
+        monthLabel.textContent = monthTitle(state.year, state.month);
+        gridEl.innerHTML = monthGridHtml(state.year, state.month, classesByDate());
     };
 
     const renderHeader = () => {
         const student = state.student || {};
         const count = state.classes.length;
         const email = student.email ? escapeHtml(student.email) : 'sin correo';
+        const phone = student.phone ? escapeHtml(student.phone) : 'sin teléfono';
 
         if (nameEl) {
             nameEl.textContent = student.name || 'Alumno';
@@ -948,8 +1121,26 @@ const initScheduleSummary = () => {
         if (metaEl) {
             metaEl.innerHTML = `${escapeHtml(student.course || 'Sin curso')} · ${count} ${
                 count === 1 ? 'clase' : 'clases'
-            } · ${email}`;
+            } · ${email} · ${phone}`;
         }
+
+        if (whatsappBtn) {
+            const hasWhatsapp = Boolean(student.whatsapp);
+            whatsappBtn.disabled = !hasWhatsapp;
+            whatsappBtn.title = hasWhatsapp
+                ? `Enviar a ${student.phone}`
+                : 'El alumno no tiene un teléfono válido para WhatsApp';
+        }
+    };
+
+    const buildWhatsappMessage = () => {
+        const student = state.student || {};
+
+        return buildScheduleWhatsappMessage({
+            name: student.name,
+            course: student.course,
+            classes: state.classes,
+        }).message;
     };
 
     prevBtn?.addEventListener('click', () => {
@@ -966,8 +1157,54 @@ const initScheduleSummary = () => {
         renderMonth();
     });
 
+    const fillPrintMonths = () => {
+        if (!printMonthsEl) {
+            return;
+        }
+
+        const grouped = classesByDate();
+        const months = classMonths();
+        const toRender = months.length ? months : [{ year: state.year, month: state.month }];
+
+        printMonthsEl.innerHTML = toRender
+            .map(({ year, month }) => printMonthBlockHtml(year, month, grouped))
+            .join('');
+        printMonthsEl.hidden = false;
+    };
+
+    const clearPrintMonths = () => {
+        if (!printMonthsEl) {
+            return;
+        }
+
+        printMonthsEl.innerHTML = '';
+        printMonthsEl.hidden = true;
+    };
+
     printBtn?.addEventListener('click', () => {
-        window.print();
+        fillPrintMonths();
+        document.documentElement.classList.add('is-printing-schedule');
+
+        const restore = () => {
+            document.documentElement.classList.remove('is-printing-schedule');
+            clearPrintMonths();
+            window.removeEventListener('afterprint', restore);
+        };
+
+        window.addEventListener('afterprint', restore);
+        requestAnimationFrame(() => window.print());
+    });
+
+    whatsappBtn?.addEventListener('click', async () => {
+        const number = state.student?.whatsapp;
+
+        if (!number) {
+            await showBookingError('Este alumno no tiene un teléfono válido para enviar por WhatsApp.');
+            return;
+        }
+
+        const url = `https://wa.me/${number}?text=${encodeURIComponent(buildWhatsappMessage())}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
     });
 
     emailBtn?.addEventListener('click', async () => {
@@ -1042,6 +1279,200 @@ const initStudentAdmin = () => {
     const scheduleModal = scheduleModalEl ? bootstrap.Modal.getOrCreateInstance(scheduleModalEl) : null;
     const studentModal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
     let openingStudentEdit = false;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    const setActionBusy = (button, busy) => {
+        if (!button) {
+            return;
+        }
+
+        button.disabled = busy;
+        button.classList.toggle('is-busy', busy);
+    };
+
+    const sendStudentWhatsapp = async (button) => {
+        const number = button.dataset.whatsapp;
+        const scheduleUrl = button.dataset.scheduleUrl;
+
+        if (!number) {
+            await showBookingError('Este alumno no tiene un teléfono válido para enviar por WhatsApp.');
+            return;
+        }
+
+        setActionBusy(button, true);
+
+        try {
+            const response = await fetch(scheduleUrl, { headers: { Accept: 'application/json' } });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(payload.message || 'No se pudieron cargar los horarios.');
+            }
+
+            const { message, count } = buildScheduleWhatsappMessage({
+                name: button.dataset.studentName || payload.name,
+                course: button.dataset.course || payload.course,
+                classes: payload.classes,
+            });
+
+            if (!count) {
+                await showBookingError('El alumno no tiene horarios asignados para enviar.');
+                return;
+            }
+
+            window.open(
+                `https://wa.me/${number}?text=${encodeURIComponent(message)}`,
+                '_blank',
+                'noopener,noreferrer'
+            );
+        } catch (error) {
+            await showBookingError(error.message || 'No se pudieron enviar los horarios por WhatsApp.');
+        } finally {
+            setActionBusy(button, false);
+        }
+    };
+
+    const sendStudentEmail = async (button) => {
+        const sendUrl = button.dataset.sendUrl;
+        const email = button.dataset.email;
+
+        if (!sendUrl) {
+            return;
+        }
+
+        setActionBusy(button, true);
+
+        try {
+            const response = await fetch(sendUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Content-Type': 'application/json',
+                },
+                body: '{}',
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                await showBookingError(payload.message || 'No se pudieron enviar los horarios por correo.');
+                return;
+            }
+
+            await showBookingSuccess(
+                `Horarios enviados por correo a ${payload.email || email || 'el alumno'}.`,
+                'Registro exitoso'
+            );
+        } catch {
+            await showBookingError('No se pudieron enviar los horarios por correo. Intenta de nuevo.');
+        } finally {
+            setActionBusy(button, false);
+        }
+    };
+
+    const extraSection = document.getElementById('studentExtraClassesSection');
+    const extraList = document.getElementById('studentExtraClassesList');
+    const extraSummary = document.getElementById('studentExtraClassesSummary');
+    const extraAddBtn = document.getElementById('studentExtraClassAdd');
+    const extraTemplate = document.getElementById('studentExtraClassRowTemplate');
+    let extraRowIndex = 0;
+
+    const parseJsonAttr = (value, fallback) => {
+        try {
+            const parsed = JSON.parse(value || 'null');
+
+            return parsed ?? fallback;
+        } catch {
+            return fallback;
+        }
+    };
+
+    const extraTypes = () => parseJsonAttr(extraSection?.dataset.extraTypes, {});
+
+    const extraQuantityTotal = () =>
+        [...(extraList?.querySelectorAll('[data-extra-quantity]') || [])].reduce(
+            (sum, input) => sum + (Number(input.value) || 0),
+            0
+        );
+
+    const courseClassesFromSelect = () => {
+        const selected = form?.querySelector('[name="course_id"]')?.selectedOptions?.[0];
+
+        return Number(selected?.dataset.numClasses || form?.dataset.courseClasses || 0);
+    };
+
+    const updateExtraSummary = () => {
+        if (!extraSummary) {
+            return;
+        }
+
+        const courseClasses = courseClassesFromSelect();
+        const extras = extraQuantityTotal();
+        extraSummary.textContent = `Curso: ${courseClasses} · Adicionales: ${extras} · Total: ${courseClasses + extras}`;
+    };
+
+    const addExtraRow = (row = {}) => {
+        if (!extraList || !extraTemplate?.content?.firstElementChild) {
+            return;
+        }
+
+        const node = extraTemplate.content.firstElementChild.cloneNode(true);
+        const index = extraRowIndex;
+        extraRowIndex += 1;
+        const typeSelect = node.querySelector('[data-extra-type]');
+        const quantityInput = node.querySelector('[data-extra-quantity]');
+        const notesInput = node.querySelector('[data-extra-notes]');
+
+        Object.entries(extraTypes()).forEach(([value, label]) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            typeSelect?.append(option);
+        });
+
+        if (typeSelect) {
+            typeSelect.name = `extra_classes[${index}][type]`;
+            typeSelect.value = row.type || '';
+        }
+
+        if (quantityInput) {
+            quantityInput.name = `extra_classes[${index}][quantity]`;
+            quantityInput.value = row.quantity || 1;
+            quantityInput.addEventListener('input', updateExtraSummary);
+        }
+
+        if (notesInput) {
+            notesInput.name = `extra_classes[${index}][notes]`;
+            notesInput.value = row.notes || '';
+        }
+
+        node.querySelector('[data-extra-remove]')?.addEventListener('click', () => {
+            node.remove();
+            updateExtraSummary();
+        });
+
+        extraList.append(node);
+        updateExtraSummary();
+    };
+
+    const renderExtraRows = (rows = []) => {
+        if (extraList) {
+            extraList.innerHTML = '';
+        }
+
+        extraRowIndex = 0;
+        rows.forEach((row) => addExtraRow(row));
+        updateExtraSummary();
+    };
+
+    const showExtraSection = (visible) => {
+        extraSection?.classList.toggle('d-none', !visible);
+
+        if (!visible) {
+            renderExtraRows([]);
+        }
+    };
 
     const setFieldValue = (name, value) => {
         const field = form?.querySelector(`[name="${name}"]`);
@@ -1090,6 +1521,8 @@ const initStudentAdmin = () => {
             submitLabel.textContent = 'Guardar alumno';
         }
 
+        showExtraSection(false);
+
         if (clearFields) {
             fieldNames.forEach((name) => setFieldValue(name, name === 'country' ? 'México' : ''));
             clearStudentInvalid();
@@ -1129,6 +1562,8 @@ const initStudentAdmin = () => {
         if (submitLabel) {
             submitLabel.textContent = 'Guardar cambios';
         }
+
+        extraSection?.classList.remove('d-none');
     };
 
     const fillStudentForm = (button) => {
@@ -1142,6 +1577,21 @@ const initStudentAdmin = () => {
         setFieldValue('state', button.dataset.state || '');
         setFieldValue('zip', button.dataset.zip || '');
         setFieldValue('country', button.dataset.country || 'México');
+        if (form) {
+            form.dataset.courseClasses = button.dataset.courseClasses || '0';
+        }
+
+        const oldExtras = parseJsonAttr(modalEl?.dataset.oldExtras, []);
+        const extras = Array.isArray(oldExtras) && oldExtras.length
+            ? oldExtras
+            : parseJsonAttr(button.dataset.extraClasses, []);
+
+        if (modalEl?.dataset.oldExtras) {
+            delete modalEl.dataset.oldExtras;
+        }
+
+        extraSection?.classList.remove('d-none');
+        renderExtraRows(Array.isArray(extras) ? extras : []);
         clearStudentInvalid();
     };
 
@@ -1180,8 +1630,13 @@ const initStudentAdmin = () => {
                 const date = String(item.date ?? '').slice(0, 10);
                 const timeRange = item.time && item.end_time ? `${item.time} - ${item.end_time}` : item.time || '—';
 
+                const rowClass = [
+                    item.is_past ? 'is-past' : '',
+                    item.status === 'cancelada' ? 'is-cancelled' : '',
+                ].filter(Boolean).join(' ');
+
                 return `
-                    <tr class="${item.is_past ? 'is-past' : ''}">
+                    <tr class="${rowClass}">
                         <td>
                             <span class="d-block text-capitalize">${escapeHtml(weekdayName(date))}</span>
                             <span class="text-muted small">${escapeHtml(formatFullDate(date))}</span>
@@ -1267,7 +1722,29 @@ const initStudentAdmin = () => {
 
     if (modalEl?.dataset.editingId) {
         setStudentEditMode(modalEl.dataset.editingId);
+        const oldExtras = parseJsonAttr(modalEl.dataset.oldExtras, []);
+        const button = document.querySelector(`.js-edit-student[data-id="${modalEl.dataset.editingId}"]`);
+        const extras = Array.isArray(oldExtras) && oldExtras.length
+            ? oldExtras
+            : parseJsonAttr(button?.dataset.extraClasses, []);
+
+        if (button?.dataset.courseClasses && form) {
+            form.dataset.courseClasses = button.dataset.courseClasses;
+        }
+
+        renderExtraRows(Array.isArray(extras) ? extras : []);
+
+        if (modalEl.dataset.oldExtras) {
+            delete modalEl.dataset.oldExtras;
+        }
     }
+
+    extraAddBtn?.addEventListener('click', () => {
+        extraSection?.classList.remove('d-none');
+        addExtraRow();
+    });
+
+    form?.querySelector('[name="course_id"]')?.addEventListener('change', updateExtraSummary);
 
     modalEl?.addEventListener('hidden.bs.modal', () => {
         if (openingStudentEdit) {
@@ -1283,6 +1760,22 @@ const initStudentAdmin = () => {
         if (scheduleBtn) {
             event.preventDefault();
             openSchedule(scheduleBtn);
+            return;
+        }
+
+        const whatsappBtn = event.target.closest('.js-student-whatsapp');
+
+        if (whatsappBtn) {
+            event.preventDefault();
+            sendStudentWhatsapp(whatsappBtn);
+            return;
+        }
+
+        const emailBtn = event.target.closest('.js-student-email');
+
+        if (emailBtn) {
+            event.preventDefault();
+            sendStudentEmail(emailBtn);
             return;
         }
 
@@ -1478,6 +1971,11 @@ const initInstructorAdmin = () => {
 
 const initVehicleAdmin = () => {
     const fieldNames = ['modelo', 'año', 'color', 'plate', 'type', 'status', 'owner', 'owner_id'];
+    const docFields = [
+        { name: 'plate_photo', urlKey: 'platePhotoUrl', label: 'Placa actual' },
+        { name: 'circulation_card', urlKey: 'circulationCardUrl', label: 'Tarjeta actual' },
+        { name: 'front_photo', urlKey: 'frontPhotoUrl', label: 'Frontal actual' },
+    ];
     const modalEl = document.getElementById('addVehicleModal');
     const form = document.getElementById('vehicleAdminForm');
     const vehicleModal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
@@ -1491,9 +1989,34 @@ const initVehicleAdmin = () => {
         }
     };
 
+    const docWrapper = (name) => form?.querySelector(`[name="${name}"]`)?.closest('[data-doc-upload]');
+
     const clearVehicleInvalid = () => {
         form?.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
         document.getElementById('vehicleFormErrorAlert')?.classList.add('d-none');
+    };
+
+    const resetVehicleDocs = (required) => {
+        docFields.forEach(({ name }) => {
+            docWrapper(name)?.resetDocUpload?.(required);
+        });
+    };
+
+    const showVehicleDocs = (button) => {
+        docFields.forEach(({ name, urlKey, label }) => {
+            const wrapper = docWrapper(name);
+            const url = button?.dataset?.[urlKey] || '';
+
+            if (!wrapper) {
+                return;
+            }
+
+            wrapper.resetDocUpload?.(false);
+
+            if (url) {
+                wrapper.showExistingDoc?.(url, label);
+            }
+        });
     };
 
     const setVehicleCreateMode = ({ clearFields = true } = {}) => {
@@ -1512,6 +2035,7 @@ const initVehicleAdmin = () => {
 
         const title = document.getElementById('vehicleFormTitle');
         const icon = document.getElementById('vehicleFormIcon');
+        const hint = document.getElementById('vehicleFormHint');
         const submitLabel = document.getElementById('vehicleFormSubmitLabel');
 
         if (title) {
@@ -1522,9 +2046,13 @@ const initVehicleAdmin = () => {
             icon.className = 'bi bi-car-front';
         }
 
+        hint?.classList.add('d-none');
+
         if (submitLabel) {
             submitLabel.textContent = 'Guardar vehículo';
         }
+
+        resetVehicleDocs(true);
 
         if (clearFields) {
             fieldNames.forEach((name) => {
@@ -1566,6 +2094,7 @@ const initVehicleAdmin = () => {
 
         const title = document.getElementById('vehicleFormTitle');
         const icon = document.getElementById('vehicleFormIcon');
+        const hint = document.getElementById('vehicleFormHint');
         const submitLabel = document.getElementById('vehicleFormSubmitLabel');
 
         if (title) {
@@ -1575,6 +2104,8 @@ const initVehicleAdmin = () => {
         if (icon) {
             icon.className = 'bi bi-pencil';
         }
+
+        hint?.classList.remove('d-none');
 
         if (submitLabel) {
             submitLabel.textContent = 'Guardar cambios';
@@ -1591,10 +2122,17 @@ const initVehicleAdmin = () => {
         setFieldValue('owner', button.dataset.owner || 'Autoescuela MaxPi');
         setFieldValue('owner_id', button.dataset.ownerId || 'MAXPI-001');
         clearVehicleInvalid();
+        showVehicleDocs(button);
     };
 
     if (modalEl?.dataset.editingId) {
         setVehicleEditMode(modalEl.dataset.editingId);
+        const button = document.querySelector(`.js-edit-vehicle[data-id="${modalEl.dataset.editingId}"]`);
+        if (button) {
+            showVehicleDocs(button);
+        } else {
+            resetVehicleDocs(false);
+        }
     }
 
     modalEl?.addEventListener('hidden.bs.modal', () => {

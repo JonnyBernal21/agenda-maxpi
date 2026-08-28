@@ -134,6 +134,38 @@ export async function confirmSoftDelete({ name, entity = 'registro' }) {
     return result.isConfirmed;
 }
 
+/**
+ * @param {{
+ *   student?: string,
+ *   date?: string,
+ *   time?: string,
+ * }} options
+ */
+export async function confirmCancelClass({ student, date, time } = {}) {
+    const detail = [student, date, time].filter(Boolean).map(escapeHtml);
+
+    const result = await Swal.fire({
+        ...swalBookingDefaults,
+        title: '¿Cancelar esta cita?',
+        html: `
+            <p class="swal-booking-message">
+                El horario quedará libre de nuevo.
+                ${detail.length ? `<br><span class="swal-booking-highlight">${detail.join(' · ')}</span>` : ''}
+            </p>
+        `,
+        icon: 'warning',
+        confirmButtonText: 'Sí, cancelar',
+        cancelButtonText: 'No, conservar',
+        customClass: {
+            ...swalBookingDefaults.customClass,
+            confirmButton: 'swal-booking-btn swal-booking-btn--danger',
+        },
+        confirmButtonColor: '#9f1239',
+    });
+
+    return result.isConfirmed;
+}
+
 export function initFlashAlerts() {
     const el = document.getElementById('app-flash');
 

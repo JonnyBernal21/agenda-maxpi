@@ -175,7 +175,7 @@
                                 @error('time')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                <p class="small text-muted mt-2 mb-0">De 8:00 AM a 7:00 PM, cada 30 minutos. Cada clase dura 2 horas.</p>
+                                <p class="small text-muted mt-2 mb-0">De 7:00 AM a 7:00 PM, cada 30 minutos. Cada clase dura 2 horas.</p>
                             </div>
                         </div>
                     </div>

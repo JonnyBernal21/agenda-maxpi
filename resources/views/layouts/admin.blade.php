@@ -84,6 +84,13 @@
                 data-message="{{ session('success') }}"
                 hidden
             ></div>
+        @elseif ($errors->any())
+            <div
+                id="app-flash"
+                data-type="error"
+                data-message="{{ $errors->first() }}"
+                hidden
+            ></div>
         @endif
 
         @yield('content')

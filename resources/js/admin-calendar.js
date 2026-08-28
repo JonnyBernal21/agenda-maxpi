@@ -7,6 +7,7 @@ import bootstrap5Plugin from '@fullcalendar/bootstrap5';
 import esLocale from '@fullcalendar/core/locales/es';
 import * as bootstrap from 'bootstrap';
 import { rollingWeekToolbar, rollingWeekViews } from './calendar-rolling-week';
+import { confirmCancelClass, showBookingError } from './booking-confirm';
 
 const statusLabels = {
     pendiente: 'Pendiente',
@@ -22,7 +23,7 @@ const pad = (value) => String(value).padStart(2, '0');
 const halfHourTimes = (() => {
     const times = [];
 
-    for (let hour = 8; hour <= 19; hour += 1) {
+    for (let hour = 7; hour <= 19; hour += 1) {
         times.push(`${pad(hour)}:00`);
 
         if (hour < 19) {
@@ -109,6 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const detailModal = modalEl ? new bootstrap.Modal(modalEl) : null;
     const confirmBtn = document.getElementById('confirmReservaBtn');
     const completeBtn = document.getElementById('completeReservaBtn');
+    const cancelBtn = document.getElementById('cancelReservaBtn');
+    const whatsappBtn = document.getElementById('eventWhatsappBtn');
+    const actionsWrap = document.getElementById('eventDetailActions');
     const confirmBaseUrl = calendarEl.dataset.confirmUrl;
     const minDate = calendarEl.dataset.minDate || '';
     const sameDayMessage = calendarEl.dataset.sameDayMessage || 'Elige una fecha a partir de mañana.';
@@ -121,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentReservaId = null;
     let currentEvent = null;
+    let currentWhatsapp = '';
     let pendingMove = null;
     let skipNextHintReset = false;
 
@@ -194,21 +199,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const setEventStatus = (status, classNumber = null) => {
+        const badge = document.getElementById('eventModalStatus');
+        const kicker = document.getElementById('eventModalKicker');
+
+        if (badge) {
+            badge.textContent = statusLabels[status] ?? status ?? '—';
+            badge.dataset.status = status || '';
+        }
+
+        if (kicker) {
+            if (status === 'cancelada') {
+                kicker.textContent = classNumber ? `Clase ${classNumber} cancelada` : 'Clase cancelada';
+            } else {
+                kicker.textContent = classNumber ? `Clase ${classNumber}` : 'Detalle de clase';
+            }
+        }
+    };
+
+    const fillEventDetail = (props, slot) => {
+        const student = props.student ?? '—';
+        const startTime = slot.time ?? props.time ?? '—';
+        const endTime = props.endTime ?? '—';
+        const instructorEl = document.getElementById('eventModalInstructor');
+
+        document.getElementById('eventModalTitle').textContent = student;
+        document.getElementById('eventModalStudent').textContent = student;
+        if (instructorEl) {
+            instructorEl.textContent = props.instructor ?? '—';
+        }
+        document.getElementById('eventModalVehicle').textContent = props.vehicle ?? '—';
+        document.getElementById('eventModalDate').textContent = formatDateLabel(slot.date ?? props.date);
+        document.getElementById('eventModalTime').textContent =
+            startTime !== '—' && endTime !== '—' ? `${startTime} - ${endTime}` : startTime;
+        currentWhatsapp = props.whatsapp || '';
+        setEventStatus(props.status, props.classNumber);
+    };
+
+    const toggleAction = (btn, visible) => {
+        btn?.classList.toggle('d-none', !visible);
+    };
+
     const updateStatusButtons = (status) => {
-        confirmBtn?.classList.add('d-none');
-        confirmBtn?.classList.remove('d-inline-flex');
-        completeBtn?.classList.add('d-none');
-        completeBtn?.classList.remove('d-inline-flex');
+        toggleAction(confirmBtn, status === 'pendiente');
+        toggleAction(completeBtn, status === 'pendiente' || status === 'confirmada');
+        toggleAction(cancelBtn, status === 'pendiente' || status === 'confirmada');
+        toggleAction(whatsappBtn, Boolean(currentWhatsapp));
 
-        if (status === 'pendiente') {
-            confirmBtn?.classList.remove('d-none');
-            confirmBtn?.classList.add('d-inline-flex');
-        }
+        const hasVisible = [confirmBtn, completeBtn, cancelBtn, whatsappBtn].some(
+            (btn) => btn && !btn.classList.contains('d-none')
+        );
 
-        if (status === 'pendiente' || status === 'confirmada') {
-            completeBtn?.classList.remove('d-none');
-            completeBtn?.classList.add('d-inline-flex');
-        }
+        actionsWrap?.classList.toggle('d-none', !hasVisible);
     };
 
     const patchStatus = async (url, successStatus, successLabel) => {
@@ -228,12 +270,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return false;
         }
 
-        document.getElementById('eventModalStatus').textContent = successLabel;
+        setEventStatus(successStatus, currentEvent?.extendedProps?.classNumber);
 
         if (currentEvent) {
             const colors = {
                 confirmada: { bg: '#2563eb', border: '#1d4ed8', class: 'fc-event-confirmada' },
                 completada: { bg: '#16a34a', border: '#15803d', class: 'fc-event-completada' },
+                cancelada: { bg: '#dc2626', border: '#b91c1c', class: 'fc-event-cancelada' },
             }[successStatus];
 
             if (colors) {
@@ -241,6 +284,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentEvent.setProp('borderColor', colors.border);
                 currentEvent.setProp('classNames', [colors.class]);
                 currentEvent.setExtendedProp('status', successStatus);
+
+                if (successStatus === 'cancelada') {
+                    const studentName = currentEvent.extendedProps?.student;
+                    currentEvent.setProp('title', studentName ? `Cancelada — ${studentName}` : 'Cancelada');
+                    currentEvent.setProp('editable', false);
+                    currentEvent.setProp('startEditable', false);
+                }
             }
         }
 
@@ -261,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
         height: 'auto',
         nowIndicator: true,
         allDaySlot: false,
-        slotMinTime: '08:00:00',
+        slotMinTime: '07:00:00',
         slotMaxTime: '19:00:00',
         slotDuration: '00:30:00',
         snapDuration: '00:30:00',
@@ -315,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!to.date || !to.time || !halfHourTimes.has(to.time)) {
                 info.revert();
-                showHint('warning', 'Elige un horario en intervalos de 30 minutos entre 08:00 y 19:00.');
+                showHint('warning', 'Elige un horario en intervalos de 30 minutos entre 07:00 y 19:00.');
                 return;
             }
 
@@ -382,17 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentReservaId = info.event.id;
             currentEvent = info.event;
 
-            document.getElementById('eventModalTitle').textContent = info.event.title;
-            document.getElementById('eventModalStudent').textContent = props.student ?? '—';
-            document.getElementById('eventModalInstructor').textContent = props.instructor ?? '—';
-            document.getElementById('eventModalVehicle').textContent = props.vehicle ?? '—';
-            document.getElementById('eventModalDate').textContent = formatDateLabel(slot.date ?? props.date);
-            const startTime = slot.time ?? props.time ?? '—';
-            const endTime = props.endTime ?? '—';
-            document.getElementById('eventModalTime').textContent =
-                startTime !== '—' && endTime !== '—' ? `${startTime} - ${endTime}` : startTime;
-            document.getElementById('eventModalStatus').textContent = statusLabels[props.status] ?? props.status ?? '—';
-
+            fillEventDetail(props, slot);
             updateStatusButtons(props.status);
             resetHint();
             detailModal.show();
@@ -416,6 +456,36 @@ document.addEventListener('DOMContentLoaded', () => {
         },
     });
 
+    whatsappBtn?.addEventListener('click', async () => {
+        if (!currentWhatsapp) {
+            await showBookingError('Este alumno no tiene un teléfono válido para enviar por WhatsApp.');
+            return;
+        }
+
+        const student = document.getElementById('eventModalStudent')?.textContent || 'alumno';
+        const date = document.getElementById('eventModalDate')?.textContent || '—';
+        const time = document.getElementById('eventModalTime')?.textContent || '—';
+        const instructor = document.getElementById('eventModalInstructor')?.textContent || '—';
+        const vehicle = document.getElementById('eventModalVehicle')?.textContent || '—';
+        const status = document.getElementById('eventModalStatus')?.textContent || '—';
+        const message = [
+            `Hola, ${student}`,
+            '',
+            'Te recordamos tu clase de Autoescuela MaxPi:',
+            `Fecha: ${date}`,
+            `Horario: ${time}`,
+            `Instructor: ${instructor}`,
+            `Vehículo: ${vehicle}`,
+            `Estado: ${status}`,
+        ].join('\n');
+
+        window.open(
+            `https://wa.me/${currentWhatsapp}?text=${encodeURIComponent(message)}`,
+            '_blank',
+            'noopener,noreferrer'
+        );
+    });
+
     confirmBtn?.addEventListener('click', async () => {
         if (!currentReservaId || !confirmBaseUrl || !csrfToken) {
             return;
@@ -423,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         confirmBtn.disabled = true;
         const originalHtml = confirmBtn.innerHTML;
-        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Confirmando...';
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
         await patchStatus(`${confirmBaseUrl}/${currentReservaId}/confirm`, 'confirmada', statusLabels.confirmada);
 
@@ -438,12 +508,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
         completeBtn.disabled = true;
         const originalHtml = completeBtn.innerHTML;
-        completeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+        completeBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
         await patchStatus(`${confirmBaseUrl}/${currentReservaId}/complete`, 'completada', statusLabels.completada);
 
         completeBtn.disabled = false;
         completeBtn.innerHTML = originalHtml;
+    });
+
+    cancelBtn?.addEventListener('click', async () => {
+        if (!currentReservaId || !confirmBaseUrl || !csrfToken) {
+            return;
+        }
+
+        const confirmed = await confirmCancelClass({
+            student: document.getElementById('eventModalStudent')?.textContent,
+            date: document.getElementById('eventModalDate')?.textContent,
+            time: document.getElementById('eventModalTime')?.textContent,
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        cancelBtn.disabled = true;
+        const originalHtml = cancelBtn.innerHTML;
+        cancelBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        skipNextHintReset = true;
+        const ok = await patchStatus(`${confirmBaseUrl}/${currentReservaId}/cancel`, 'cancelada', statusLabels.cancelada);
+
+        cancelBtn.disabled = false;
+        cancelBtn.innerHTML = originalHtml;
+
+        if (ok) {
+            detailModal?.hide();
+            showHint(
+                'success',
+                '<i class="bi bi-check-circle me-1"></i> Cita cancelada. Queda marcada en rojo en el calendario.'
+            );
+        } else {
+            skipNextHintReset = false;
+        }
     });
 
     moveModalEl?.addEventListener('hidden.bs.modal', () => {

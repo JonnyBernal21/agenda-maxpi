@@ -9,9 +9,9 @@
     data-editing-id="{{ old('_form') === 'vehicle-edit' ? old('editing_id') : '' }}"
     data-auto-open="{{ ($errors->any() && in_array(old('_form'), ['vehicle', 'vehicle-edit'], true)) ? 'true' : 'false' }}"
 >
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-            <form method="POST" action="{{ route('admin.vehicles.store') }}" class="modal-form-layout" id="vehicleAdminForm">
+            <form method="POST" action="{{ route('admin.vehicles.store') }}" class="modal-form-layout" enctype="multipart/form-data" id="vehicleAdminForm">
                 @csrf
                 <input type="hidden" name="_method" id="vehicleFormSpoofMethod" value="PUT" disabled>
                 <input type="hidden" name="_form" id="vehicleFormType" value="{{ old('_form', 'vehicle') }}">
@@ -28,9 +28,18 @@
                 <div class="modal-body">
                     @if ($errors->any() && in_array(old('_form'), ['vehicle', 'vehicle-edit'], true))
                         <div class="alert alert-danger" role="alert" id="vehicleFormErrorAlert">
-                            Revisa los campos marcados e intenta de nuevo.
+                            <p class="mb-1 fw-semibold">No se pudo guardar. Motivo:</p>
+                            <ul class="mb-0 ps-3">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
                         </div>
                     @endif
+
+                    <p class="small text-muted mb-3 d-none" id="vehicleFormHint">
+                        En edición las fotos actuales se conservan si no subes una nueva.
+                    </p>
 
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -161,6 +170,45 @@
                             @error('owner_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                        </div>
+
+                        <div class="col-12">
+                            <hr class="my-1">
+                            <p class="fw-semibold mb-1">Galería</p>
+                            <p class="small text-muted mb-0">Toma una foto con la cámara o sube un archivo. La tarjeta de circulación acepta imagen o PDF.</p>
+                        </div>
+
+                        <div class="col-md-4">
+                            @include('admin.partials.document-upload-field', [
+                                'id' => 'vehicle_plate_photo',
+                                'name' => 'plate_photo',
+                                'label' => 'Foto de placa',
+                                'help' => 'Foto clara de la placa del vehículo.',
+                                'accept' => 'image/*',
+                                'capture' => 'environment',
+                            ])
+                        </div>
+
+                        <div class="col-md-4">
+                            @include('admin.partials.document-upload-field', [
+                                'id' => 'vehicle_circulation_card',
+                                'name' => 'circulation_card',
+                                'label' => 'Tarjeta de circulación',
+                                'help' => 'Documento o foto de la tarjeta.',
+                                'accept' => 'image/*,application/pdf',
+                                'capture' => 'environment',
+                            ])
+                        </div>
+
+                        <div class="col-md-4">
+                            @include('admin.partials.document-upload-field', [
+                                'id' => 'vehicle_front_photo',
+                                'name' => 'front_photo',
+                                'label' => 'Frontal del carro',
+                                'help' => 'Foto de frente del vehículo.',
+                                'accept' => 'image/*',
+                                'capture' => 'environment',
+                            ])
                         </div>
                     </div>
                 </div>

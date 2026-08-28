@@ -125,59 +125,10 @@
         </div>
     </div>
 
-    <div class="modal fade" id="eventDetailModal" tabindex="-1" aria-labelledby="eventDetailModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content modal-content--stack">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-semibold d-flex align-items-center">
-                        <span class="modal-title-icon"><i class="bi bi-info-circle"></i></span>
-                        <span id="eventModalTitle">Detalle de reserva</span>
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    <dl class="row mb-0 detail-list">
-                        <dt class="col-sm-4"><i class="bi bi-person"></i>Alumno</dt>
-                        <dd class="col-sm-8" id="eventModalStudent">—</dd>
-
-                        <dt class="col-sm-4"><i class="bi bi-person-badge"></i>Instructor</dt>
-                        <dd class="col-sm-8" id="eventModalInstructor">—</dd>
-
-                        <dt class="col-sm-4"><i class="bi bi-car-front"></i>Vehículo</dt>
-                        <dd class="col-sm-8" id="eventModalVehicle">—</dd>
-
-                        <dt class="col-sm-4"><i class="bi bi-calendar-event"></i>Fecha</dt>
-                        <dd class="col-sm-8" id="eventModalDate">—</dd>
-
-                        <dt class="col-sm-4"><i class="bi bi-clock"></i>Horario</dt>
-                        <dd class="col-sm-8" id="eventModalTime">—</dd>
-
-                        <dt class="col-sm-4"><i class="bi bi-flag"></i>Estado</dt>
-                        <dd class="col-sm-8" id="eventModalStatus">—</dd>
-                    </dl>
-                </div>
-                <div class="modal-footer flex-wrap gap-2">
-                    <button type="button" class="btn btn-brand-outline" data-bs-dismiss="modal">Cerrar</button>
-                    <button
-                        type="button"
-                        id="confirmReservaBtn"
-                        class="btn btn-success d-none align-items-center gap-2"
-                    >
-                        <i class="bi bi-check-circle"></i>
-                        Confirmar cita
-                    </button>
-                    <button
-                        type="button"
-                        id="completeReservaBtn"
-                        class="btn btn-primary d-none align-items-center gap-2"
-                    >
-                        <i class="bi bi-check2-all"></i>
-                        Completada
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    @include('partials.event-detail-modal', [
+        'showInstructor' => true,
+        'showActions' => true,
+    ])
 
     <div
         class="modal fade"

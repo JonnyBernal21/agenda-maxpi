@@ -2,12 +2,27 @@
     $accept = $accept ?? 'image/*,application/pdf';
     $capture = $capture ?? 'environment';
     $required = $required ?? true;
+    $allowsPdf = str_contains($accept, 'pdf');
+    $maxKb = $maxKb ?? ($allowsPdf ? 8192 : 5120);
+    $maxMb = (int) round($maxKb / 1024);
+    $formatLabel = $allowsPdf ? 'JPG, PNG, WEBP o PDF' : 'JPG, PNG o WEBP';
     $help = $help ?? 'Toma una foto o sube un archivo.';
 @endphp
 
-<div class="doc-upload @error($name) is-invalid @enderror" data-doc-upload data-doc-label="{{ $label }}">
+<div
+    class="doc-upload @error($name) is-invalid @enderror"
+    data-doc-upload
+    data-doc-label="{{ $label }}"
+    data-max-kb="{{ $maxKb }}"
+    data-allows-pdf="{{ $allowsPdf ? 'true' : 'false' }}"
+    data-format-label="{{ $formatLabel }}"
+>
     <label class="form-label" for="{{ $id }}">{{ $label }}</label>
-    <p class="small text-muted mb-2">{{ $help }}</p>
+    <p class="small text-muted mb-1">{{ $help }}</p>
+    <p class="small mb-2 doc-upload__specs">
+        Formato: <strong>{{ $formatLabel }}</strong>
+        · Tamaño máximo: <strong>{{ $maxMb }} MB</strong>
+    </p>
 
     <input
         type="file"
@@ -44,6 +59,8 @@
         <span class="doc-upload__filename small" data-doc-filename></span>
         <button type="button" class="btn btn-link btn-sm text-danger p-0 ms-auto" data-doc-clear>Quitar</button>
     </div>
+
+    <div class="invalid-feedback d-none" data-doc-error></div>
 
     @error($name)
         <div class="invalid-feedback d-block">{{ $message }}</div>

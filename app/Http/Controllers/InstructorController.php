@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Instructor;
+use App\Support\UploadedDocument;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -15,6 +16,8 @@ class InstructorController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
+        UploadedDocument::assertValid($request, $this->documentFields());
+
         $validated = $request->validate(
             $this->rules(),
             $this->messages(),
@@ -41,6 +44,8 @@ class InstructorController extends Controller
 
     public function update(Request $request, Instructor $instructor): RedirectResponse
     {
+        UploadedDocument::assertValid($request, $this->documentFields());
+
         $validated = $request->validate(
             $this->rules($instructor),
             $this->messages(),
@@ -113,13 +118,34 @@ class InstructorController extends Controller
     {
         return [
             'photo.required' => 'Agrega la fotografía del instructor.',
-            'photo.mimes' => 'La fotografía debe ser JPG, PNG o WEBP.',
+            'photo.mimes' => 'La fotografía debe ser JPG, PNG o WEBP. No se acepta HEIC ni otros formatos.',
+            'photo.max' => 'La fotografía no puede pesar más de 5 MB.',
+            'photo.uploaded' => 'No se pudo subir la fotografía. Revisa que sea JPG, PNG o WEBP y que pese máximo 5 MB.',
             'dni_front.required' => 'Agrega el frente del DNI.',
-            'dni_front.mimes' => 'El DNI frente debe ser imagen o PDF.',
+            'dni_front.mimes' => 'El DNI frente debe ser JPG, PNG, WEBP o PDF.',
+            'dni_front.max' => 'El DNI frente no puede pesar más de 8 MB.',
+            'dni_front.uploaded' => 'No se pudo subir el DNI frente. Revisa formato (JPG, PNG, WEBP o PDF) y tamaño (máx. 8 MB).',
             'dni_back.required' => 'Agrega el reverso del DNI.',
-            'dni_back.mimes' => 'El DNI reverso debe ser imagen o PDF.',
+            'dni_back.mimes' => 'El DNI reverso debe ser JPG, PNG, WEBP o PDF.',
+            'dni_back.max' => 'El DNI reverso no puede pesar más de 8 MB.',
+            'dni_back.uploaded' => 'No se pudo subir el DNI reverso. Revisa formato (JPG, PNG, WEBP o PDF) y tamaño (máx. 8 MB).',
             'address_proof.required' => 'Agrega el comprobante de domicilio.',
-            'address_proof.mimes' => 'El comprobante debe ser imagen o PDF.',
+            'address_proof.mimes' => 'El comprobante debe ser JPG, PNG, WEBP o PDF.',
+            'address_proof.max' => 'El comprobante no puede pesar más de 8 MB.',
+            'address_proof.uploaded' => 'No se pudo subir el comprobante. Revisa formato (JPG, PNG, WEBP o PDF) y tamaño (máx. 8 MB).',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function documentFields(): array
+    {
+        return [
+            'photo' => 'La fotografía',
+            'dni_front' => 'El DNI frente',
+            'dni_back' => 'El DNI reverso',
+            'address_proof' => 'El comprobante de domicilio',
         ];
     }
 

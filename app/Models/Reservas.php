@@ -10,8 +10,12 @@ class Reservas extends Model
 {
     public const CLASS_DURATION_MINUTES = 120;
 
+    public const DAY_START_HOUR = 7;
+
+    public const DAY_END_HOUR = 19;
+
     /** @var list<string> */
-    public const AVAILABLE_TIMES = ['08:00', '10:00', '12:00', '14:00', '16:00'];
+    public const AVAILABLE_TIMES = ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00'];
 
     protected $table = 'reservas';
 
@@ -30,10 +34,10 @@ class Reservas extends Model
     {
         $times = [];
 
-        for ($hour = 8; $hour <= 19; $hour++) {
+        for ($hour = self::DAY_START_HOUR; $hour <= self::DAY_END_HOUR; $hour++) {
             $times[] = sprintf('%02d:00', $hour);
 
-            if ($hour < 19) {
+            if ($hour < self::DAY_END_HOUR) {
                 $times[] = sprintf('%02d:30', $hour);
             }
         }

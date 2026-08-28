@@ -67,6 +67,11 @@ class Student extends Authenticatable
         return $this->hasMany(Reservas::class, 'student_id');
     }
 
+    public function extraClasses(): HasMany
+    {
+        return $this->hasMany(StudentExtraClass::class);
+    }
+
     public function completedClassesCount(): int
     {
         return $this->reservas()
@@ -90,9 +95,18 @@ class Student extends Authenticatable
         return $this->completedClassesCount();
     }
 
+    public function extraClassesCount(): int
+    {
+        if ($this->relationLoaded('extraClasses')) {
+            return (int) $this->extraClasses->sum('quantity');
+        }
+
+        return (int) $this->extraClasses()->sum('quantity');
+    }
+
     public function allowedClassesCount(): int
     {
-        return $this->course?->num_classes ?? 0;
+        return ($this->course?->num_classes ?? 0) + $this->extraClassesCount();
     }
 
     public function remainingClasses(): int

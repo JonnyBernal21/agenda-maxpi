@@ -21,7 +21,7 @@
                     <p class="small text-muted mb-0" id="scheduleSummaryStudentMeta"></p>
                 </div>
 
-                <div class="schedule-month">
+                <div class="schedule-month" id="scheduleSummaryLiveMonth">
                     <div class="schedule-month__nav">
                         <button type="button" class="btn btn-brand-outline schedule-month__arrow" id="scheduleSummaryPrev" aria-label="Mes anterior">
                             <i class="bi bi-chevron-left"></i>
@@ -42,6 +42,7 @@
                     </div>
                     <div class="schedule-month__grid" id="scheduleSummaryGrid"></div>
                 </div>
+                <div class="schedule-summary-print-months" id="scheduleSummaryPrintMonths" hidden></div>
 
                 <div class="schedule-summary-list">
                     <p class="small fw-semibold">Listado de clases</p>
@@ -62,14 +63,36 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-brand-outline d-flex align-items-center gap-2" id="scheduleSummaryPrint">
+            <div class="modal-footer schedule-summary-footer">
+                <button
+                    type="button"
+                    class="btn btn-brand-outline d-flex align-items-center gap-2"
+                    id="scheduleSummaryPrint"
+                    title="Imprimir horarios"
+                    aria-label="Imprimir horarios"
+                >
                     <i class="bi bi-printer"></i>
-                    Imprimir horarios
+                    Imprimir
                 </button>
-                <button type="button" class="btn btn-brand d-flex align-items-center gap-2" id="scheduleSummaryEmail">
+                <button
+                    type="button"
+                    class="btn btn-whatsapp d-flex align-items-center gap-2"
+                    id="scheduleSummaryWhatsapp"
+                    title="Enviar horarios por WhatsApp"
+                    aria-label="Enviar horarios por WhatsApp"
+                >
+                    <i class="bi bi-whatsapp"></i>
+                    Enviar
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-brand d-flex align-items-center gap-2"
+                    id="scheduleSummaryEmail"
+                    title="Enviar horarios por correo"
+                    aria-label="Enviar horarios por correo"
+                >
                     <i class="bi bi-envelope"></i>
-                    Enviar por correo
+                    Enviar
                 </button>
             </div>
         </div>

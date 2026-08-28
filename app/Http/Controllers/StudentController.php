@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Reservas;
 use App\Models\Student;
+use App\Models\StudentExtraClass;
 use App\Services\StudentMailService;
 use App\Support\ReservaStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 
@@ -85,12 +87,20 @@ class StudentController extends Controller
                 'student_id' => $student->id,
                 'student_name' => $student->fullName(),
                 'course_name' => $student->course?->name ?? 'Sin curso',
-                'num_classes' => $student->allowedClassesCount(),
+                'num_classes' => $student->remainingClasses(),
             ]);
     }
 
     public function update(Request $request, Student $student): RedirectResponse
     {
+        $rawExtras = $request->input('extra_classes', []);
+        $request->merge([
+            'extra_classes' => collect(is_array($rawExtras) ? $rawExtras : [])
+                ->filter(fn ($row) => is_array($row) && filled($row['type'] ?? null))
+                ->values()
+                ->all(),
+        ]);
+
         $validated = $request->validate([
             'course_id' => ['required', Rule::exists('courses', 'id')],
             'name' => ['required', 'string', 'max:255'],
@@ -102,9 +112,30 @@ class StudentController extends Controller
             'state' => ['required', 'string', 'max:255'],
             'zip' => ['required', 'string', 'max:255'],
             'country' => ['required', 'string', 'max:255'],
+            'extra_classes' => ['nullable', 'array'],
+            'extra_classes.*.type' => ['required', Rule::in(array_keys(StudentExtraClass::TYPES))],
+            'extra_classes.*.quantity' => ['required', 'integer', 'min:1', 'max:20'],
+            'extra_classes.*.notes' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $student->update($validated);
+        $extras = collect($validated['extra_classes'] ?? [])
+            ->map(fn (array $row) => [
+                'type' => $row['type'],
+                'quantity' => (int) $row['quantity'],
+                'notes' => filled($row['notes'] ?? null) ? $row['notes'] : null,
+            ])
+            ->all();
+
+        unset($validated['extra_classes']);
+
+        DB::transaction(function () use ($student, $validated, $extras) {
+            $student->update($validated);
+            $student->extraClasses()->delete();
+
+            if ($extras !== []) {
+                $student->extraClasses()->createMany($extras);
+            }
+        });
 
         return redirect()
             ->to(URL::previous() ?: route('admin.students.index'))
@@ -128,14 +159,13 @@ class StudentController extends Controller
 
         $reservas = $student->reservas()
             ->with(['instructor', 'vehicle'])
-            ->where('status', '!=', 'cancelada')
             ->orderByRaw('case when date >= ? then 0 else 1 end', [$today])
             ->orderBy('date')
             ->orderBy('time')
             ->get();
 
         $allowed = $student->allowedClassesCount();
-        $booked = $reservas->count();
+        $booked = $reservas->where('status', '!=', 'cancelada')->count();
 
         $classes = $reservas->map(function (Reservas $reserva) use ($today) {
             $date = $reserva->date instanceof \DateTimeInterface

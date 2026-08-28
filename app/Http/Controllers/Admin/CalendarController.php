@@ -7,6 +7,8 @@ use App\Models\Reservas;
 use App\Services\StudentSlotAvailabilityService;
 use App\Support\ReservaCalendarColors;
 use App\Support\ReservaCalendarLabels;
+use App\Support\ReservaClassNumbers;
+use App\Support\WhatsAppNumber;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,14 +24,17 @@ class CalendarController extends Controller
         $start = Carbon::parse($request->query('start', now()->startOfWeek()))->toDateString();
         $end = Carbon::parse($request->query('end', now()->addWeek()))->toDateString();
 
-        $reservationEvents = Reservas::query()
+        $reservas = Reservas::query()
             ->with(['student', 'instructor', 'vehicle'])
-            ->active()
             ->whereBetween('date', [$start, $end])
             ->orderBy('date')
             ->orderBy('time')
-            ->get()
-            ->map(function (Reservas $reserva) {
+            ->get();
+
+        $classNumbers = ReservaClassNumbers::mapFor($reservas);
+
+        $reservationEvents = $reservas
+            ->map(function (Reservas $reserva) use ($classNumbers) {
                 $studentName = $reserva->student
                     ? trim($reserva->student->name.' '.$reserva->student->last_name)
                     : 'Estudiante';
@@ -42,10 +47,12 @@ class CalendarController extends Controller
 
                 $colors = ReservaCalendarColors::forStatus($reserva->status);
                 $movable = in_array($reserva->status, ['pendiente', 'confirmada'], true);
+                $cancelled = $reserva->status === 'cancelada';
+                $classNumber = $classNumbers[(int) $reserva->id] ?? null;
 
                 return [
                     'id' => $reserva->id,
-                    'title' => "Clase — {$studentName}",
+                    'title' => ReservaCalendarLabels::bookedEventTitle($studentName, $classNumber, $cancelled),
                     'start' => $reserva->startsAt(),
                     'end' => $reserva->endsAt(),
                     'backgroundColor' => $colors['background'],
@@ -63,10 +70,13 @@ class CalendarController extends Controller
                         'student' => $studentName,
                         'instructor' => $instructorName,
                         'vehicle' => $vehicleLabel,
+                        'classNumber' => $classNumber,
                         'status' => $reserva->status,
                         'date' => $reserva->date,
                         'time' => $reserva->time,
                         'endTime' => date('H:i', strtotime($reserva->endsAt())),
+                        'phone' => $reserva->student?->phone,
+                        'whatsapp' => WhatsAppNumber::digits($reserva->student?->phone),
                     ],
                 ];
             });
@@ -76,6 +86,7 @@ class CalendarController extends Controller
                 $colors = ReservaCalendarColors::forAvailable();
                 $startAt = "{$slot['date']} {$slot['time']}:00";
                 $endAt = date('Y-m-d H:i:s', strtotime($startAt.' +'.Reservas::CLASS_DURATION_MINUTES.' minutes'));
+
                 return [
                     'id' => "available-{$slot['date']}-{$slot['time']}",
                     'title' => ReservaCalendarLabels::availableEventTitle(

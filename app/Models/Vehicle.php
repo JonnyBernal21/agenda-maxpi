@@ -25,6 +25,9 @@ class Vehicle extends Model
         'status',
         'owner',
         'owner_id',
+        'plate_photo_path',
+        'circulation_card_path',
+        'front_photo_path',
     ];
 
     public function reservas(): HasMany
@@ -40,5 +43,29 @@ class Vehicle extends Model
     public function optionLabel(): string
     {
         return "{$this->modelo} ({$this->plate}) · {$this->typeLabel()}";
+    }
+
+    public function documentUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        return asset($path);
+    }
+
+    public function frontPhotoUrl(): ?string
+    {
+        return $this->documentUrl($this->front_photo_path);
+    }
+
+    public function platePhotoUrl(): ?string
+    {
+        return $this->documentUrl($this->plate_photo_path);
+    }
+
+    public function circulationCardUrl(): ?string
+    {
+        return $this->documentUrl($this->circulation_card_path);
     }
 }

@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         height: 'auto',
         nowIndicator: true,
         allDaySlot: false,
-        slotMinTime: '08:00:00',
+        slotMinTime: '07:00:00',
         slotMaxTime: '19:00:00',
         slotDuration: '00:30:00',
         slotLabelInterval: '01:00:00',
@@ -116,17 +116,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const props = info.event.extendedProps;
             const slot = slotFromEvent(info.event);
-
-            document.getElementById('eventModalTitle').textContent = info.event.title;
-            document.getElementById('eventModalStudent').textContent = props.student ?? '—';
-            document.getElementById('eventModalVehicle').textContent = props.vehicle ?? '—';
-            document.getElementById('eventModalDate').textContent = formatDateLabel(slot.date ?? props.date);
+            const student = props.student ?? '—';
             const startTime = slot.time ?? props.time ?? '—';
             const endTime = props.endTime ?? '—';
+            const status = props.status ?? '';
+            const classNumber = props.classNumber;
+            const kicker = document.getElementById('eventModalKicker');
+            const badge = document.getElementById('eventModalStatus');
+
+            document.getElementById('eventModalTitle').textContent = student;
+            document.getElementById('eventModalStudent').textContent = student;
+            document.getElementById('eventModalVehicle').textContent = props.vehicle ?? '—';
+            document.getElementById('eventModalDate').textContent = formatDateLabel(slot.date ?? props.date);
             document.getElementById('eventModalTime').textContent =
                 startTime !== '—' && endTime !== '—' ? `${startTime} - ${endTime}` : startTime;
-            document.getElementById('eventModalStatus').textContent =
-                statusLabels[props.status] ?? props.status ?? '—';
+
+            if (kicker) {
+                if (status === 'cancelada') {
+                    kicker.textContent = classNumber ? `Clase ${classNumber} cancelada` : 'Clase cancelada';
+                } else {
+                    kicker.textContent = classNumber ? `Clase ${classNumber}` : 'Detalle de clase';
+                }
+            }
+
+            if (badge) {
+                badge.textContent = statusLabels[status] ?? status ?? '—';
+                badge.dataset.status = status;
+            }
 
             resetHint();
             detailModal.show();

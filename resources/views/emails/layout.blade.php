@@ -33,7 +33,7 @@
                     <tr>
                         <td style="padding:10px 28px 0;text-align:center;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:{{ $brand }};">
                             {{ $heading }}
-                        </td>
+                        </td>   
                     </tr>
                     <tr>
                         <td style="padding:18px 28px 28px;">

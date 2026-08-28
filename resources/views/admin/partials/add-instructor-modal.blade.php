@@ -28,7 +28,12 @@
                 <div class="modal-body">
                     @if ($errors->any() && in_array(old('_form'), ['instructor', 'instructor-edit'], true))
                         <div class="alert alert-danger" role="alert" id="instructorFormErrorAlert">
-                            Revisa los campos marcados e intenta de nuevo.
+                            <p class="mb-1 fw-semibold">No se pudo guardar. Motivo:</p>
+                            <ul class="mb-0 ps-3">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
                         </div>
                     @endif
 

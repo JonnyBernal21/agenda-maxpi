@@ -8,8 +8,9 @@
     data-update-base="{{ url('admin/students') }}"
     data-editing-id="{{ old('_form') === 'student-edit' ? old('editing_id') : '' }}"
     data-auto-open="{{ ($errors->any() && in_array(old('_form'), ['student', 'student-edit'], true)) ? 'true' : 'false' }}"
+    data-old-extras='@json(old('extra_classes', []))'
 >
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <form method="POST" action="{{ route('admin.students.store') }}" class="modal-form-layout" id="studentAdminForm">
                 @csrf
@@ -49,6 +50,7 @@
                                 @foreach ($courses as $course)
                                     <option
                                         value="{{ $course->id }}"
+                                        data-num-classes="{{ $course->num_classes }}"
                                         @selected(old('course_id') == $course->id)
                                     >
                                         {{ $course->name }} — {{ $course->num_classes }} clases — ${{ number_format($course->cost, 2) }}
@@ -208,6 +210,35 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <div
+                            class="col-12 d-none"
+                            id="studentExtraClassesSection"
+                            data-extra-types='@json(\App\Models\StudentExtraClass::TYPES)'
+                        >
+                            <hr class="my-1">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <div>
+                                    <p class="fw-semibold mb-0">Clases adicionales</p>
+                                    <p class="small text-muted mb-0">Reposiciones, clases extra o cortesías. Suman al cupo del curso.</p>
+                                </div>
+                                <button type="button" class="btn btn-brand-outline btn-sm d-inline-flex align-items-center gap-1" id="studentExtraClassAdd">
+                                    <i class="bi bi-plus-lg"></i>
+                                    Agregar
+                                </button>
+                            </div>
+                            <p class="small mb-2" id="studentExtraClassesSummary"></p>
+                            <div class="student-extra-head" aria-hidden="true">
+                                <span>Tipo</span>
+                                <span>Cant.</span>
+                                <span>Motivo</span>
+                                <span></span>
+                            </div>
+                            <div class="student-extra-list" id="studentExtraClassesList"></div>
+                            @error('extra_classes')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                 </div>
 
@@ -222,3 +253,33 @@
         </div>
     </div>
 </div>
+
+<template id="studentExtraClassRowTemplate">
+    <div class="student-extra-row">
+        <select class="form-select" data-extra-type aria-label="Tipo de clase adicional" required>
+            <option value="">Tipo</option>
+        </select>
+        <input
+            type="number"
+            class="form-control"
+            data-extra-quantity
+            min="1"
+            max="20"
+            value="1"
+            title="Cantidad"
+            aria-label="Cantidad"
+            required
+        >
+        <input
+            type="text"
+            class="form-control"
+            data-extra-notes
+            maxlength="255"
+            placeholder="Motivo (opcional)"
+            aria-label="Motivo"
+        >
+        <button type="button" class="btn btn-brand-outline btn-delete" data-extra-remove title="Quitar" aria-label="Quitar clase adicional">
+            <i class="bi bi-trash"></i>
+        </button>
+    </div>
+</template>

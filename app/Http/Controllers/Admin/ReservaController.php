@@ -9,6 +9,7 @@ use App\Services\ReservaAvailabilityService;
 use App\Services\SameDayScheduleCutoff;
 use App\Services\StudentScheduleService;
 use App\Support\ReservaSchedulePayload;
+use App\Support\WhatsAppNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -98,13 +99,13 @@ class ReservaController extends Controller
 
     public function storeSchedule(Request $request): RedirectResponse|JsonResponse
     {
-        $student = Student::query()->with('course')->findOrFail($request->input('student_id'));
+        $student = Student::query()->with(['course', 'extraClasses'])->findOrFail($request->input('student_id'));
 
         $payload = [
             'student_id' => $student->id,
             'student_name' => $student->fullName(),
             'course_name' => $student->course?->name ?? 'Sin curso',
-            'num_classes' => $student->allowedClassesCount(),
+            'num_classes' => $student->remainingClasses(),
         ];
 
         $minDate = $this->sameDayCutoff->minBookableDate();
@@ -218,6 +219,8 @@ class ReservaController extends Controller
                     'id' => $student->id,
                     'name' => $student->fullName(),
                     'email' => $student->email,
+                    'phone' => $student->phone,
+                    'whatsapp' => WhatsAppNumber::digits($student->phone),
                     'course' => $student->course?->name ?? 'Sin curso',
                 ],
                 'classes' => ReservaSchedulePayload::fromReservas($reservas),
@@ -262,6 +265,22 @@ class ReservaController extends Controller
         ]);
     }
 
+    public function cancel(Reservas $reserva): JsonResponse
+    {
+        if (! in_array($reserva->status, ['pendiente', 'confirmada'], true)) {
+            return response()->json([
+                'message' => 'Solo se pueden cancelar citas pendientes o confirmadas.',
+            ], 422);
+        }
+
+        $reserva->update(['status' => 'cancelada']);
+
+        return response()->json([
+            'message' => 'Cita cancelada correctamente.',
+            'status' => 'cancelada',
+        ]);
+    }
+
     public function reschedule(Request $request, Reservas $reserva): JsonResponse
     {
         if (! in_array($reserva->status, ['pendiente', 'confirmada'], true)) {
@@ -280,7 +299,7 @@ class ReservaController extends Controller
             'date.after_or_equal' => $this->sameDayCutoff->blocksDate((string) $request->input('date'))
                 ? $this->sameDayCutoff->message()
                 : 'Elige una fecha a partir de '.$minDate.'.',
-            'time.in' => 'El horario debe ser en intervalos de 30 minutos entre 08:00 y 19:00.',
+            'time.in' => 'El horario debe ser en intervalos de 30 minutos entre 07:00 y 19:00.',
         ]);
 
         $time = Reservas::normalizeTime($validated['time']);

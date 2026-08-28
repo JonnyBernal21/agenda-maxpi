@@ -57,6 +57,7 @@ Route::middleware('auth:web')->group(function () {
     Route::post('/admin/reservas/horarios', [AdminReservaController::class, 'storeSchedule'])->name('admin.reservas.schedule');
     Route::patch('/admin/reservas/{reserva}/confirm', [AdminReservaController::class, 'confirm'])->name('admin.reservas.confirm');
     Route::patch('/admin/reservas/{reserva}/complete', [AdminReservaController::class, 'complete'])->name('admin.reservas.complete');
+    Route::patch('/admin/reservas/{reserva}/cancel', [AdminReservaController::class, 'cancel'])->name('admin.reservas.cancel');
     Route::patch('/admin/reservas/{reserva}/reschedule', [AdminReservaController::class, 'reschedule'])->name('admin.reservas.reschedule');
     Route::get('/admin/reservas/options', [AdminAvailabilityController::class, 'options'])->name('admin.reservas.options');
     Route::get('/admin/reservas/check', [AdminAvailabilityController::class, 'check'])->name('admin.reservas.check');

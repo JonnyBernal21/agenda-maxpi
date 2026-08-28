@@ -11,7 +11,7 @@ class StudentController extends Controller
     public function index(): View
     {
         $students = Student::query()
-            ->with('course')
+            ->with(['course', 'extraClasses'])
             ->withCount([
                 'reservas as completed_classes_count' => fn ($query) => $query->where('status', 'completada'),
             ])

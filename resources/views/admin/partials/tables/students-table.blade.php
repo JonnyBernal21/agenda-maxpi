@@ -12,6 +12,14 @@
     </thead>
     <tbody>
         @foreach ($students as $student)
+            @php
+                $whatsapp = \App\Support\WhatsAppNumber::digits($student->phone);
+                $extraClassesForForm = $student->extraClasses->map(fn ($extra) => [
+                    'type' => $extra->type,
+                    'quantity' => $extra->quantity,
+                    'notes' => $extra->notes,
+                ])->values();
+            @endphp
             <tr>
                 <td>
                     <span class="fw-semibold">{{ $student->name }} {{ $student->last_name }}</span>
@@ -27,7 +35,7 @@
                 </td>
                 <td>
                     <span class="small">
-                        {{ $student->completed_classes_count ?? 0 }} / {{ $student->course?->num_classes ?? 0 }}
+                        {{ $student->completed_classes_count ?? 0 }} / {{ $student->allowedClassesCount() }}
                     </span>
                     <span class="text-muted small d-block">
                         {{ $student->remaining_classes }} restantes
@@ -49,6 +57,30 @@
                         </button>
                         <button
                             type="button"
+                            class="btn btn-brand-outline js-student-whatsapp"
+                            title="{{ $whatsapp ? 'Enviar horarios por WhatsApp' : 'El alumno no tiene un teléfono válido para WhatsApp' }}"
+                            aria-label="Enviar horarios por WhatsApp a {{ $student->fullName() }}"
+                            data-whatsapp="{{ $whatsapp }}"
+                            data-student-name="{{ $student->fullName() }}"
+                            data-course="{{ $student->course?->name }}"
+                            data-schedule-url="{{ route('admin.students.schedule', $student) }}"
+                            @disabled(! $whatsapp)
+                        >
+                            <i class="bi bi-whatsapp"></i>
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-brand-outline js-student-email"
+                            title="Enviar horarios por correo"
+                            aria-label="Enviar horarios por correo a {{ $student->fullName() }}"
+                            data-email="{{ $student->email }}"
+                            data-send-url="{{ route('admin.students.schedule-email', $student) }}"
+                            @disabled(! $student->email)
+                        >
+                            <i class="bi bi-envelope"></i>
+                        </button>
+                        <button
+                            type="button"
                             class="btn btn-brand-outline js-edit-student"
                             title="Editar información"
                             aria-label="Editar a {{ $student->fullName() }}"
@@ -63,6 +95,8 @@
                             data-state="{{ $student->state }}"
                             data-zip="{{ $student->zip }}"
                             data-country="{{ $student->country }}"
+                            data-course-classes="{{ $student->course?->num_classes ?? 0 }}"
+                            data-extra-classes='@json($extraClassesForForm)'
                         >
                             <i class="bi bi-pencil"></i>
                         </button>

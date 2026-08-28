@@ -4,6 +4,17 @@ namespace App\Support;
 
 class ReservaCalendarLabels
 {
+    public static function bookedEventTitle(string $studentName, ?int $classNumber = null, bool $cancelled = false): string
+    {
+        $label = $cancelled ? 'Cancelada' : 'Clase';
+
+        if ($classNumber) {
+            return "{$label}- {$classNumber} {$studentName}";
+        }
+
+        return "{$label} — {$studentName}";
+    }
+
     public static function availableEventTitle(int $cupos, string $time): string
     {
         $time = substr($time, 0, 5);
