@@ -14,6 +14,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        if (app()->isProduction()) {
+            $this->call(ProductionSeeder::class);
+
+            return;
+        }
+
         $this->call([
             UserSeeder::class,
             CourseSeeder::class,

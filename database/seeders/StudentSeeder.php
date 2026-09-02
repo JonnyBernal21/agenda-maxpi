@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Course;
-use App\Models\Institution;
 use App\Models\Student;
 use Illuminate\Database\Seeder;
 
@@ -15,7 +14,6 @@ class StudentSeeder extends Seeder
     public function run(): void
     {
         $courses = Course::query()->pluck('id', 'name');
-        $institutionsByCity = Institution::query()->pluck('id', 'city');
 
         $students = [
             [
@@ -245,7 +243,6 @@ class StudentSeeder extends Seeder
                 ['email' => $data['email']],
                 [
                     'course_id' => $courses[$data['course']] ?? null,
-                    'institution_id' => $institutionsByCity[$data['city']] ?? null,
                     'name' => $data['name'],
                     'last_name' => $data['last_name'],
                     'password' => 'password',
