@@ -7,6 +7,7 @@ use App\Models\Instructor;
 use App\Models\Reservas;
 use App\Models\Vehicle;
 use App\Services\SameDayScheduleCutoff;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Schema::defaultStringLength(191);
+
         View::composer([
             'layouts.admin',
             'admin.partials.add-student-modal',
