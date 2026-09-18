@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             VehicleSeeder::class,
             StudentSeeder::class,
             ReservaSeeder::class,
+            ExpenseSeeder::class,
         ]);
     }
 }

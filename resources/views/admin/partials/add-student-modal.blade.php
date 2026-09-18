@@ -9,6 +9,7 @@
     data-editing-id="{{ old('_form') === 'student-edit' ? old('editing_id') : '' }}"
     data-auto-open="{{ ($errors->any() && in_array(old('_form'), ['student', 'student-edit'], true)) ? 'true' : 'false' }}"
     data-old-extras='@json(old('extra_classes', []))'
+    data-home-class-fee="{{ \App\Models\Student::HOME_CLASS_FEE }}"
 >
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
@@ -51,6 +52,7 @@
                                     <option
                                         value="{{ $course->id }}"
                                         data-num-classes="{{ $course->num_classes }}"
+                                        data-cost="{{ $course->cost }}"
                                         @selected(old('course_id') == $course->id)
                                     >
                                         {{ $course->name }} — {{ $course->num_classes }} clases — ${{ number_format($course->cost, 2) }}
@@ -209,6 +211,95 @@
                             @error('country')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                        </div>
+
+                        <div class="col-12">
+                            <hr class="my-1">
+                            <label for="student_is_home_class" class="form-label">Modalidad</label>
+                            <select
+                                id="student_is_home_class"
+                                name="is_home_class"
+                                class="form-select @error('is_home_class') is-invalid @enderror"
+                                required
+                            >
+                                <option value="0" @selected(! old('is_home_class'))>En escuela</option>
+                                <option value="1" @selected((string) old('is_home_class') === '1')>A domicilio</option>
+                            </select>
+                            @error('is_home_class')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-12">
+                            <hr class="my-1">
+                            <p class="fw-semibold mb-0">Pago del curso</p>
+                            <p class="small text-muted mb-2">El subtotal sale del curso. En descuento puedes escribir <strong>%15</strong> o <strong>15.00</strong>.</p>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Subtotal</label>
+                            <div class="student-payment-figure" id="studentPaymentSubtotalLabel">$0.00</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="student_discount" class="form-label">Descuento</label>
+                            <input
+                                type="text"
+                                id="student_discount"
+                                name="discount"
+                                value="{{ old('discount') }}"
+                                class="form-control @error('discount') is-invalid @enderror"
+                                placeholder="%15 o 15.00"
+                                inputmode="decimal"
+                                autocomplete="off"
+                            >
+                            @error('discount')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Total</label>
+                            <div class="student-payment-figure student-payment-figure--total" id="studentPaymentTotalLabel">$0.00</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="student_payment_method" class="form-label">Método de pago</label>
+                            <select
+                                id="student_payment_method"
+                                name="payment_method"
+                                class="form-select @error('payment_method') is-invalid @enderror"
+                                required
+                            >
+                                <option value="">Seleccionar</option>
+                                @foreach (\App\Models\Student::PAYMENT_METHODS as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('payment_method') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @error('payment_method')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="student_payment_plan" class="form-label">Forma de pago</label>
+                            <select
+                                id="student_payment_plan"
+                                name="payment_plan"
+                                class="form-select @error('payment_plan') is-invalid @enderror"
+                                required
+                            >
+                                @foreach (\App\Models\Student::PAYMENT_PLANS as $value => $label)
+                                    <option value="{{ $value }}" @selected((string) old('payment_plan', '1') === (string) $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @error('payment_plan')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-12">
+                            <p class="small text-muted mb-0" id="studentPaymentPlanHint">Se cobra el total en un solo pago.</p>
                         </div>
 
                         <div

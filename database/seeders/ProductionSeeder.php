@@ -15,6 +15,7 @@ class ProductionSeeder extends Seeder
                 'name' => 'Administrador',
                 'password' => 'password',
                 'email_verified_at' => now(),
+                'role_id' => \App\Models\Role::query()->where('slug', \App\Models\Role::ADMIN)->value('id'),
             ]
         );
 

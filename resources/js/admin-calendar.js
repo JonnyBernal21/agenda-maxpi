@@ -7,6 +7,7 @@ import bootstrap5Plugin from '@fullcalendar/bootstrap5';
 import esLocale from '@fullcalendar/core/locales/es';
 import * as bootstrap from 'bootstrap';
 import { rollingWeekToolbar, rollingWeekViews } from './calendar-rolling-week';
+import { calendarEventContent } from './calendar-event-content';
 import { confirmCancelClass, showBookingError } from './booking-confirm';
 
 const statusLabels = {
@@ -287,7 +288,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (successStatus === 'cancelada') {
                     const studentName = currentEvent.extendedProps?.student;
-                    currentEvent.setProp('title', studentName ? `Cancelada — ${studentName}` : 'Cancelada');
+                    const homeMark = currentEvent.extendedProps?.isHomeClass ? ' A domicilio' : '';
+                    currentEvent.setProp('title', studentName ? `Cancelada —${homeMark} ${studentName}` : 'Cancelada');
                     currentEvent.setProp('editable', false);
                     currentEvent.setProp('startEditable', false);
                 }
@@ -326,6 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
             minute: '2-digit',
             hour12: false,
         },
+        eventContent: calendarEventContent,
         editable: true,
         eventStartEditable: true,
         eventDurationEditable: false,

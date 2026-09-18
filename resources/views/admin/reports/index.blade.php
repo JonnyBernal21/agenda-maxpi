@@ -20,6 +20,7 @@
             action="{{ route('admin.reports.index') }}"
             class="report-range d-flex flex-wrap align-items-end gap-2"
         >
+            <input type="hidden" name="year" value="{{ $balance['year'] }}">
             <div>
                 <label for="report_range" class="form-label mb-0 small text-muted">Periodo</label>
                 <div class="report-range__field">
@@ -38,10 +39,12 @@
                 </div>
             </div>
             @if (! $report['is_today'])
-                <a href="{{ route('admin.reports.index') }}" class="btn btn-brand-outline btn-sm">Hoy</a>
+                <a href="{{ route('admin.reports.index', ['year' => $balance['year']]) }}" class="btn btn-brand-outline btn-sm">Hoy</a>
             @endif
         </form>
     </div>
+
+    @include('admin.partials.monthly-balance-report')
 
     <div class="row g-3 mb-4">
         <div class="col-6 col-lg-4 col-xl">

@@ -7,6 +7,7 @@ import bootstrap5Plugin from '@fullcalendar/bootstrap5';
 import esLocale from '@fullcalendar/core/locales/es';
 import * as bootstrap from 'bootstrap';
 import { rollingWeekToolbar, rollingWeekViews } from './calendar-rolling-week';
+import { calendarEventContent } from './calendar-event-content';
 
 const statusLabels = {
     pendiente: 'Pendiente',
@@ -109,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
             minute: '2-digit',
             hour12: false,
         },
+        eventContent: calendarEventContent,
         eventClick(info) {
             if (!detailModal) {
                 return;

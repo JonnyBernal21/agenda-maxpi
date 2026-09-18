@@ -12,9 +12,13 @@
             <div class="col-12 col-sm-10 col-md-8 col-lg-5 col-xl-4">
                 <div class="text-center mb-4 text-white">
                     <div class="auth-logo mx-auto">
-                        <i class="bi bi-calendar2-week"></i>
+                        @if (($appSetting ?? null)?->logoUrl())
+                            <img src="{{ $appSetting->logoUrl() }}" alt="" class="auth-logo-image">
+                        @else
+                            <i class="bi bi-calendar2-week"></i>
+                        @endif
                     </div>
-                    <h1 class="h4 fw-bold mb-1">Agenda MaxPi</h1>
+                    <h1 class="h4 fw-bold mb-1">{{ ($appSetting ?? null)?->companyName() ?? config('app.name') }}</h1>
                     <p class="opacity-75 small mb-0">Panel administrador</p>
                 </div>
 

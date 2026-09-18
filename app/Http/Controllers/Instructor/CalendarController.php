@@ -43,10 +43,11 @@ class CalendarController extends Controller
                 $colors = ReservaCalendarColors::forStatus($reserva->status);
                 $cancelled = $reserva->status === 'cancelada';
                 $classNumber = $classNumbers[(int) $reserva->id] ?? null;
+                $isHomeClass = (bool) $reserva->student?->is_home_class;
 
                 return [
                     'id' => $reserva->id,
-                    'title' => ReservaCalendarLabels::bookedEventTitle($studentName, $classNumber, $cancelled),
+                    'title' => ReservaCalendarLabels::bookedEventTitle($studentName, $classNumber, $cancelled, $isHomeClass),
                     'start' => $reserva->startsAt(),
                     'end' => $reserva->endsAt(),
                     'backgroundColor' => $colors['background'],
@@ -57,6 +58,7 @@ class CalendarController extends Controller
                         'student' => $studentName,
                         'vehicle' => $vehicleLabel,
                         'classNumber' => $classNumber,
+                        'isHomeClass' => $isHomeClass,
                         'status' => $reserva->status,
                         'date' => $reserva->date,
                         'time' => $reserva->time,

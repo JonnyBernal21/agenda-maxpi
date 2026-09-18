@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasUppercasePersonFields;
+use App\Support\DiscountInput;
 use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,33 @@ class Student extends Authenticatable
 {
     /** @use HasFactory<StudentFactory> */
     use HasFactory, HasUppercasePersonFields, Notifiable, SoftDeletes;
+
+    public const PAYMENT_CASH = 'efectivo';
+
+    public const PAYMENT_TRANSFER = 'transferencia';
+
+    public const PAYMENT_CARD = 'tarjeta';
+
+    public const HOME_CLASS_FEE = 100.00;
+
+    /**
+     * @var array<string, string>
+     */
+    public const PAYMENT_METHODS = [
+        self::PAYMENT_CASH => 'Efectivo',
+        self::PAYMENT_TRANSFER => 'Transferencia',
+        self::PAYMENT_CARD => 'Tarjeta',
+    ];
+
+    /**
+     * @var array<int, string>
+     */
+    public const PAYMENT_PLANS = [
+        1 => 'Un solo pago',
+        2 => 'Dos pagos',
+        3 => 'Tres pagos',
+        4 => 'Cuatro pagos',
+    ];
 
     /**
      * @var list<string>
@@ -32,6 +60,16 @@ class Student extends Authenticatable
         'state',
         'zip',
         'country',
+        'is_home_class',
+        'meeting_point',
+        'meeting_lat',
+        'meeting_lng',
+        'payment_subtotal',
+        'discount_percent',
+        'discount_amount',
+        'payment_total',
+        'payment_method',
+        'payment_plan',
     ];
 
     /**
@@ -49,6 +87,14 @@ class Student extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'is_home_class' => 'boolean',
+            'meeting_lat' => 'decimal:7',
+            'meeting_lng' => 'decimal:7',
+            'payment_subtotal' => 'decimal:2',
+            'discount_percent' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
+            'payment_total' => 'decimal:2',
+            'payment_plan' => 'integer',
         ];
     }
 
@@ -70,6 +116,26 @@ class Student extends Authenticatable
     public function extraClasses(): HasMany
     {
         return $this->hasMany(StudentExtraClass::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(StudentPayment::class);
+    }
+
+    public function recordPayment(?string $paidAt = null): ?StudentPayment
+    {
+        $amount = round((float) $this->payment_total, 2);
+
+        if ($amount <= 0) {
+            return null;
+        }
+
+        return $this->payments()->create([
+            'amount' => $amount,
+            'paid_at' => $paidAt ?? now()->toDateString(),
+            'payment_method' => $this->payment_method,
+        ]);
     }
 
     public function completedClassesCount(): int
@@ -122,5 +188,30 @@ class Student extends Authenticatable
     public function fullName(): string
     {
         return trim($this->name.' '.$this->last_name);
+    }
+
+    public function paymentMethodLabel(): string
+    {
+        return self::PAYMENT_METHODS[$this->payment_method] ?? '—';
+    }
+
+    public function paymentPlanLabel(): string
+    {
+        return self::PAYMENT_PLANS[$this->payment_plan] ?? '—';
+    }
+
+    public function paymentTotalLabel(): string
+    {
+        return '$'.number_format((float) $this->payment_total, 2);
+    }
+
+    public static function homeClassFee(bool $isHomeClass): float
+    {
+        return $isHomeClass ? self::HOME_CLASS_FEE : 0.0;
+    }
+
+    public function discountInput(): string
+    {
+        return DiscountInput::display((float) $this->discount_percent, (float) $this->discount_amount);
     }
 }

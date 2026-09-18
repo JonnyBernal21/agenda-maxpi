@@ -52,7 +52,7 @@
     <div class="action-bar d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
             <p class="fw-semibold mb-0 text-dark">Acciones rápidas</p>
-            <p class="small text-muted mb-0">Registra alumnos, instructores, vehículos o agenda clases</p>
+            <p class="small text-muted mb-0">Registra alumnos, instructores, vehículos, cursos, gastos o agenda clases</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <button
@@ -81,6 +81,24 @@
             >
                 <i class="bi bi-car-front"></i>
                 Agregar vehículo
+            </button>
+            <button
+                type="button"
+                class="btn btn-brand-outline d-flex align-items-center gap-2"
+                data-bs-toggle="modal"
+                data-bs-target="#addCourseModal"
+            >
+                <i class="bi bi-journal-plus"></i>
+                Agregar curso
+            </button>
+            <button
+                type="button"
+                class="btn btn-brand-outline d-flex align-items-center gap-2"
+                data-bs-toggle="modal"
+                data-bs-target="#addExpenseModal"
+            >
+                <i class="bi bi-receipt"></i>
+                Agregar gasto
             </button>
             <button
                 type="button"

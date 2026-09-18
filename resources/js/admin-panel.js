@@ -1,5 +1,6 @@
 import * as bootstrap from 'bootstrap';
 import { confirmSoftDelete, showBookingError, showBookingSuccess } from './booking-confirm';
+import { bindStudentEnrollment } from './student-enrollment';
 
 let openScheduleSummary = () => {};
 
@@ -1482,6 +1483,8 @@ const initStudentAdmin = () => {
         }
     };
 
+    const enrollment = bindStudentEnrollment({ form, modalEl, setFieldValue });
+
     const clearStudentInvalid = () => {
         form?.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
         const errorAlert = document.getElementById('studentFormErrorAlert');
@@ -1526,6 +1529,7 @@ const initStudentAdmin = () => {
         if (clearFields) {
             fieldNames.forEach((name) => setFieldValue(name, name === 'country' ? 'México' : ''));
             clearStudentInvalid();
+            enrollment.resetEnrollment();
         }
     };
 
@@ -1592,6 +1596,7 @@ const initStudentAdmin = () => {
 
         extraSection?.classList.remove('d-none');
         renderExtraRows(Array.isArray(extras) ? extras : []);
+        enrollment.fillEnrollment(button);
         clearStudentInvalid();
     };
 
@@ -1744,7 +1749,10 @@ const initStudentAdmin = () => {
         addExtraRow();
     });
 
-    form?.querySelector('[name="course_id"]')?.addEventListener('change', updateExtraSummary);
+    form?.querySelector('[name="course_id"]')?.addEventListener('change', () => {
+        updateExtraSummary();
+        enrollment.refreshPayment();
+    });
 
     modalEl?.addEventListener('hidden.bs.modal', () => {
         if (openingStudentEdit) {
@@ -2159,6 +2167,457 @@ const initVehicleAdmin = () => {
     });
 };
 
+const initCourseAdmin = () => {
+    const fieldNames = ['name', 'description', 'cost', 'temario', 'num_classes'];
+    const modalEl = document.getElementById('addCourseModal');
+    const form = document.getElementById('courseAdminForm');
+    const courseModal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+    let openingCourseEdit = false;
+
+    const setFieldValue = (name, value) => {
+        const field = form?.querySelector(`[name="${name}"]`);
+
+        if (field) {
+            field.value = value ?? '';
+        }
+    };
+
+    const clearCourseInvalid = () => {
+        form?.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+        document.getElementById('courseFormErrorAlert')?.classList.add('d-none');
+    };
+
+    const setCourseCreateMode = ({ clearFields = true } = {}) => {
+        if (!form || !modalEl) {
+            return;
+        }
+
+        form.action = modalEl.dataset.storeUrl;
+        const methodInput = document.getElementById('courseFormSpoofMethod');
+        if (methodInput) {
+            methodInput.disabled = true;
+        }
+
+        setFieldValue('_form', 'course');
+        setFieldValue('editing_id', '');
+
+        const title = document.getElementById('courseFormTitle');
+        const icon = document.getElementById('courseFormIcon');
+        const hint = document.getElementById('courseFormHint');
+        const submitLabel = document.getElementById('courseFormSubmitLabel');
+
+        if (title) {
+            title.textContent = 'Agregar curso';
+        }
+
+        if (icon) {
+            icon.className = 'bi bi-journal-plus';
+        }
+
+        hint?.classList.add('d-none');
+
+        if (submitLabel) {
+            submitLabel.textContent = 'Guardar curso';
+        }
+
+        if (clearFields) {
+            fieldNames.forEach((name) => setFieldValue(name, ''));
+            clearCourseInvalid();
+        }
+    };
+
+    const setCourseEditMode = (courseId) => {
+        if (!form || !modalEl || !courseId) {
+            return;
+        }
+
+        form.action = `${modalEl.dataset.updateBase}/${courseId}`;
+        const methodInput = document.getElementById('courseFormSpoofMethod');
+        if (methodInput) {
+            methodInput.disabled = false;
+            methodInput.value = 'PUT';
+        }
+
+        setFieldValue('_form', 'course-edit');
+        setFieldValue('editing_id', courseId);
+
+        const title = document.getElementById('courseFormTitle');
+        const icon = document.getElementById('courseFormIcon');
+        const hint = document.getElementById('courseFormHint');
+        const submitLabel = document.getElementById('courseFormSubmitLabel');
+
+        if (title) {
+            title.textContent = 'Editar curso';
+        }
+
+        if (icon) {
+            icon.className = 'bi bi-pencil';
+        }
+
+        hint?.classList.remove('d-none');
+
+        if (submitLabel) {
+            submitLabel.textContent = 'Guardar cambios';
+        }
+    };
+
+    const fillCourseForm = (button) => {
+        setFieldValue('name', button.dataset.name || '');
+        setFieldValue('description', button.dataset.description || '');
+        setFieldValue('cost', button.dataset.cost || '');
+        setFieldValue('temario', button.dataset.temario || '');
+        setFieldValue('num_classes', button.dataset.numClasses || '');
+        clearCourseInvalid();
+    };
+
+    if (modalEl?.dataset.editingId) {
+        setCourseEditMode(modalEl.dataset.editingId);
+    }
+
+    modalEl?.addEventListener('hidden.bs.modal', () => {
+        if (openingCourseEdit) {
+            return;
+        }
+
+        setCourseCreateMode();
+    });
+
+    document.addEventListener('click', (event) => {
+        const editBtn = event.target.closest('.js-edit-course');
+
+        if (!editBtn || !courseModal) {
+            return;
+        }
+
+        event.preventDefault();
+        openingCourseEdit = true;
+        fillCourseForm(editBtn);
+        setCourseEditMode(editBtn.dataset.id);
+        courseModal.show();
+        openingCourseEdit = false;
+    });
+};
+
+const initExpenseAdmin = () => {
+    const fieldNames = ['date', 'concept', 'category', 'amount', 'payment_method', 'notes'];
+    const modalEl = document.getElementById('addExpenseModal');
+    const form = document.getElementById('expenseAdminForm');
+    const expenseModal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+    let openingExpenseEdit = false;
+
+    const setFieldValue = (name, value) => {
+        const field = form?.querySelector(`[name="${name}"]`);
+
+        if (field) {
+            field.value = value ?? '';
+        }
+    };
+
+    const clearExpenseInvalid = () => {
+        form?.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+        document.getElementById('expenseFormErrorAlert')?.classList.add('d-none');
+    };
+
+    const setExpenseCreateMode = ({ clearFields = true } = {}) => {
+        if (!form || !modalEl) {
+            return;
+        }
+
+        form.action = modalEl.dataset.storeUrl;
+        const methodInput = document.getElementById('expenseFormSpoofMethod');
+        if (methodInput) {
+            methodInput.disabled = true;
+        }
+
+        setFieldValue('_form', 'expense');
+        setFieldValue('editing_id', '');
+
+        const title = document.getElementById('expenseFormTitle');
+        const icon = document.getElementById('expenseFormIcon');
+        const hint = document.getElementById('expenseFormHint');
+        const submitLabel = document.getElementById('expenseFormSubmitLabel');
+
+        if (title) {
+            title.textContent = 'Agregar gasto';
+        }
+
+        if (icon) {
+            icon.className = 'bi bi-receipt';
+        }
+
+        hint?.classList.add('d-none');
+
+        if (submitLabel) {
+            submitLabel.textContent = 'Guardar gasto';
+        }
+
+        if (clearFields) {
+            fieldNames.forEach((name) => {
+                if (name === 'date') {
+                    setFieldValue(name, modalEl.dataset.today || '');
+                    return;
+                }
+
+                setFieldValue(name, '');
+            });
+            clearExpenseInvalid();
+        }
+    };
+
+    const setExpenseEditMode = (expenseId) => {
+        if (!form || !modalEl || !expenseId) {
+            return;
+        }
+
+        form.action = `${modalEl.dataset.updateBase}/${expenseId}`;
+        const methodInput = document.getElementById('expenseFormSpoofMethod');
+        if (methodInput) {
+            methodInput.disabled = false;
+            methodInput.value = 'PUT';
+        }
+
+        setFieldValue('_form', 'expense-edit');
+        setFieldValue('editing_id', expenseId);
+
+        const title = document.getElementById('expenseFormTitle');
+        const icon = document.getElementById('expenseFormIcon');
+        const hint = document.getElementById('expenseFormHint');
+        const submitLabel = document.getElementById('expenseFormSubmitLabel');
+
+        if (title) {
+            title.textContent = 'Editar gasto';
+        }
+
+        if (icon) {
+            icon.className = 'bi bi-pencil';
+        }
+
+        hint?.classList.remove('d-none');
+
+        if (submitLabel) {
+            submitLabel.textContent = 'Guardar cambios';
+        }
+    };
+
+    const fillExpenseForm = (button) => {
+        setFieldValue('date', button.dataset.date || '');
+        setFieldValue('concept', button.dataset.concept || '');
+        setFieldValue('category', button.dataset.category || '');
+        setFieldValue('amount', button.dataset.amount || '');
+        setFieldValue('payment_method', button.dataset.paymentMethod || '');
+        setFieldValue('notes', button.dataset.notes || '');
+        clearExpenseInvalid();
+    };
+
+    if (modalEl?.dataset.editingId) {
+        setExpenseEditMode(modalEl.dataset.editingId);
+    }
+
+    modalEl?.addEventListener('hidden.bs.modal', () => {
+        if (openingExpenseEdit) {
+            return;
+        }
+
+        setExpenseCreateMode();
+    });
+
+    document.addEventListener('click', (event) => {
+        const editBtn = event.target.closest('.js-edit-expense');
+
+        if (!editBtn || !expenseModal) {
+            return;
+        }
+
+        event.preventDefault();
+        openingExpenseEdit = true;
+        fillExpenseForm(editBtn);
+        setExpenseEditMode(editBtn.dataset.id);
+        expenseModal.show();
+        openingExpenseEdit = false;
+    });
+};
+
+const initUserAdmin = () => {
+    const fieldNames = ['name', 'email', 'role_id', 'password', 'password_confirmation'];
+    const modalEl = document.getElementById('addUserModal');
+    const form = document.getElementById('userAdminForm');
+    const userModal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+    let openingUserEdit = false;
+
+    const setFieldValue = (name, value) => {
+        const field = form?.querySelector(`[name="${name}"]`);
+
+        if (field) {
+            field.value = value ?? '';
+        }
+    };
+
+    const passwordInput = () => form?.querySelector('[name="password"]');
+
+    const setUserCreateMode = ({ clearFields = true } = {}) => {
+        if (!form || !modalEl) {
+            return;
+        }
+
+        form.action = modalEl.dataset.storeUrl;
+        const methodInput = document.getElementById('userFormSpoofMethod');
+        if (methodInput) {
+            methodInput.disabled = true;
+        }
+
+        setFieldValue('_form', 'user');
+        setFieldValue('editing_id', '');
+        passwordInput()?.setAttribute('required', 'required');
+        document.getElementById('userPasswordHint')?.classList.add('d-none');
+        document.getElementById('userFormTitle') && (document.getElementById('userFormTitle').textContent = 'Agregar usuario');
+        const icon = document.getElementById('userFormIcon');
+        if (icon) {
+            icon.className = 'bi bi-person-plus';
+        }
+        const submitLabel = document.getElementById('userFormSubmitLabel');
+        if (submitLabel) {
+            submitLabel.textContent = 'Guardar usuario';
+        }
+
+        if (clearFields) {
+            fieldNames.forEach((name) => setFieldValue(name, ''));
+            form.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+            document.getElementById('userFormErrorAlert')?.classList.add('d-none');
+        }
+    };
+
+    const setUserEditMode = (userId) => {
+        if (!form || !modalEl || !userId) {
+            return;
+        }
+
+        form.action = `${modalEl.dataset.updateBase}/${userId}`;
+        const methodInput = document.getElementById('userFormSpoofMethod');
+        if (methodInput) {
+            methodInput.disabled = false;
+            methodInput.value = 'PUT';
+        }
+
+        setFieldValue('_form', 'user-edit');
+        setFieldValue('editing_id', userId);
+        passwordInput()?.removeAttribute('required');
+        document.getElementById('userPasswordHint')?.classList.remove('d-none');
+        const title = document.getElementById('userFormTitle');
+        if (title) {
+            title.textContent = 'Editar usuario';
+        }
+        const icon = document.getElementById('userFormIcon');
+        if (icon) {
+            icon.className = 'bi bi-pencil';
+        }
+        const submitLabel = document.getElementById('userFormSubmitLabel');
+        if (submitLabel) {
+            submitLabel.textContent = 'Guardar cambios';
+        }
+    };
+
+    if (modalEl?.dataset.editingId) {
+        setUserEditMode(modalEl.dataset.editingId);
+    }
+
+    modalEl?.addEventListener('hidden.bs.modal', () => {
+        if (!openingUserEdit) {
+            setUserCreateMode();
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        const editBtn = event.target.closest('.js-edit-user');
+
+        if (!editBtn || !userModal) {
+            return;
+        }
+
+        event.preventDefault();
+        openingUserEdit = true;
+        setFieldValue('name', editBtn.dataset.name || '');
+        setFieldValue('email', editBtn.dataset.email || '');
+        setFieldValue('role_id', editBtn.dataset.roleId || '');
+        setFieldValue('password', '');
+        setFieldValue('password_confirmation', '');
+        setUserEditMode(editBtn.dataset.id);
+        userModal.show();
+        openingUserEdit = false;
+    });
+};
+
+const initSettingsBrand = () => {
+    const input = document.getElementById('company_logo');
+    const preview = document.getElementById('settingsLogoPreview');
+    const wrap = document.getElementById('settingsLogoPreviewWrap');
+    const remove = document.getElementById('settingsRemoveLogo');
+
+    input?.addEventListener('change', () => {
+        const file = input.files?.[0];
+
+        if (!file || !preview || !wrap) {
+            return;
+        }
+
+        preview.src = URL.createObjectURL(file);
+        wrap.style.display = '';
+        if (remove) {
+            remove.checked = false;
+        }
+    });
+};
+
+const initRolePermissions = () => {
+    const form = document.getElementById('rolePermissionsForm');
+
+    if (!form) {
+        return;
+    }
+
+    const items = () => [...form.querySelectorAll('.js-permission-item')];
+
+    const syncGroups = () => {
+        form.querySelectorAll('.permission-group').forEach((group) => {
+            const boxes = [...group.querySelectorAll('.js-permission-item')];
+            const toggle = group.querySelector('.js-permission-group');
+
+            if (toggle && boxes.length) {
+                toggle.checked = boxes.every((box) => box.checked);
+            }
+        });
+    };
+
+    form.querySelectorAll('.js-permission-group').forEach((toggle) => {
+        toggle.addEventListener('change', () => {
+            toggle.closest('.permission-group')
+                ?.querySelectorAll('.js-permission-item')
+                .forEach((box) => {
+                    box.checked = toggle.checked;
+                });
+        });
+    });
+
+    form.addEventListener('change', (event) => {
+        if (event.target.classList.contains('js-permission-item')) {
+            syncGroups();
+        }
+    });
+
+    document.getElementById('permissionCheckAll')?.addEventListener('click', () => {
+        items().forEach((box) => {
+            box.checked = true;
+        });
+        syncGroups();
+    });
+
+    document.getElementById('permissionClearAll')?.addEventListener('click', () => {
+        items().forEach((box) => {
+            box.checked = false;
+        });
+        syncGroups();
+    });
+};
+
 const initSoftDelete = () => {
     document.addEventListener('submit', async (event) => {
         const form = event.target.closest('form.js-soft-delete');
@@ -2185,12 +2644,20 @@ document.addEventListener('DOMContentLoaded', () => {
     initStudentAdmin();
     initInstructorAdmin();
     initVehicleAdmin();
+    initCourseAdmin();
+    initExpenseAdmin();
+    initUserAdmin();
+    initSettingsBrand();
+    initRolePermissions();
     initSoftDelete();
 
     const modals = [
         { id: 'addStudentModal', form: 'student' },
         { id: 'addInstructorModal', form: 'instructor' },
         { id: 'addVehicleModal', form: 'vehicle' },
+        { id: 'addCourseModal', form: 'course' },
+        { id: 'addExpenseModal', form: 'expense' },
+        { id: 'addUserModal', form: 'user' },
         { id: 'scheduleClassModal', form: 'reserva' },
         { id: 'assignScheduleModal', form: 'schedule' },
         { id: 'scheduleSummaryModal' },

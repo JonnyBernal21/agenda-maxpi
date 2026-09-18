@@ -23,6 +23,9 @@
             <tr>
                 <td>
                     <span class="fw-semibold">{{ $student->name }} {{ $student->last_name }}</span>
+                    @if ($student->is_home_class)
+                        <span class="table-badge d-block mt-1">A domicilio</span>
+                    @endif
                 </td>
                 <td>{{ $student->email }}</td>
                 <td>{{ $student->phone }}</td>
@@ -97,6 +100,10 @@
                             data-country="{{ $student->country }}"
                             data-course-classes="{{ $student->course?->num_classes ?? 0 }}"
                             data-extra-classes='@json($extraClassesForForm)'
+                            data-is-home-class="{{ $student->is_home_class ? '1' : '0' }}"
+                            data-discount="{{ $student->discountInput() }}"
+                            data-payment-method="{{ $student->payment_method }}"
+                            data-payment-plan="{{ $student->payment_plan }}"
                         >
                             <i class="bi bi-pencil"></i>
                         </button>

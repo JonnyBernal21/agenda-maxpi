@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\DailyReportService;
+use App\Services\MonthlyBalanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -12,6 +13,7 @@ class ReportController extends Controller
 {
     public function __construct(
         private readonly DailyReportService $dailyReport,
+        private readonly MonthlyBalanceService $monthlyBalance,
     ) {}
 
     public function index(Request $request): View
@@ -32,12 +34,25 @@ class ReportController extends Controller
         }
 
         $report = $this->dailyReport->forRange($from, $to);
+        $year = $this->parseYear($request->input('year'));
 
         return view('admin.reports.index', [
             'report' => $report,
             'from' => $report['from'],
             'to' => $report['to'],
+            'balance' => $this->monthlyBalance->forYear($year),
         ]);
+    }
+
+    private function parseYear(mixed $value): int
+    {
+        $year = (int) $value;
+
+        if ($year < 2000 || $year > 2100) {
+            return (int) now()->year;
+        }
+
+        return $year;
     }
 
     private function parseDate(?string $value): ?Carbon

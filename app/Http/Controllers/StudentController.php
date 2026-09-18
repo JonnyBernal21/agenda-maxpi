@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Course;
 use App\Models\Reservas;
 use App\Models\Student;
 use App\Models\StudentExtraClass;
 use App\Services\StudentMailService;
+use App\Support\DiscountInput;
 use App\Support\ReservaStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -59,23 +61,18 @@ class StudentController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'course_id' => ['required', Rule::exists('courses', 'id')],
-            'name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:students,email'],
-            'phone' => ['required', 'string', 'max:255'],
-            'address' => ['required', 'string', 'max:255'],
-            'city' => ['required', 'string', 'max:255'],
-            'state' => ['required', 'string', 'max:255'],
-            'zip' => ['required', 'string', 'max:255'],
-            'country' => ['required', 'string', 'max:255'],
-        ]);
+        $payload = $this->enrollmentPayload($request);
 
-        $student = Student::query()->create([
-            ...$validated,
-            'password' => 'password',
-        ]);
+        $student = DB::transaction(function () use ($payload) {
+            $student = Student::query()->create([
+                ...$payload,
+                'password' => 'password',
+            ]);
+
+            $student->recordPayment();
+
+            return $student;
+        });
 
         $student->load('course');
 
@@ -101,24 +98,9 @@ class StudentController extends Controller
                 ->all(),
         ]);
 
-        $validated = $request->validate([
-            'course_id' => ['required', Rule::exists('courses', 'id')],
-            'name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('students', 'email')->ignore($student->id)],
-            'phone' => ['required', 'string', 'max:255'],
-            'address' => ['required', 'string', 'max:255'],
-            'city' => ['required', 'string', 'max:255'],
-            'state' => ['required', 'string', 'max:255'],
-            'zip' => ['required', 'string', 'max:255'],
-            'country' => ['required', 'string', 'max:255'],
-            'extra_classes' => ['nullable', 'array'],
-            'extra_classes.*.type' => ['required', Rule::in(array_keys(StudentExtraClass::TYPES))],
-            'extra_classes.*.quantity' => ['required', 'integer', 'min:1', 'max:20'],
-            'extra_classes.*.notes' => ['nullable', 'string', 'max:255'],
-        ]);
+        $payload = $this->enrollmentPayload($request, $student);
 
-        $extras = collect($validated['extra_classes'] ?? [])
+        $extras = collect($request->input('extra_classes', []))
             ->map(fn (array $row) => [
                 'type' => $row['type'],
                 'quantity' => (int) $row['quantity'],
@@ -126,10 +108,8 @@ class StudentController extends Controller
             ])
             ->all();
 
-        unset($validated['extra_classes']);
-
-        DB::transaction(function () use ($student, $validated, $extras) {
-            $student->update($validated);
+        DB::transaction(function () use ($student, $payload, $extras) {
+            $student->update($payload);
             $student->extraClasses()->delete();
 
             if ($extras !== []) {
@@ -140,6 +120,87 @@ class StudentController extends Controller
         return redirect()
             ->to(URL::previous() ?: route('admin.students.index'))
             ->with('success', "Se actualizó la información de {$student->fullName()}.");
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function enrollmentPayload(Request $request, ?Student $student = null): array
+    {
+        $isHome = $request->boolean('is_home_class');
+
+        $rules = [
+            'course_id' => ['required', Rule::exists('courses', 'id')],
+            'name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                $student
+                    ? Rule::unique('students', 'email')->ignore($student->id)
+                    : 'unique:students,email',
+            ],
+            'phone' => ['required', 'string', 'max:255'],
+            'address' => ['required', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:255'],
+            'state' => ['required', 'string', 'max:255'],
+            'zip' => ['required', 'string', 'max:255'],
+            'country' => ['required', 'string', 'max:255'],
+            'is_home_class' => ['required', 'boolean'],
+            'discount' => ['nullable', 'string', 'max:20'],
+            'payment_method' => ['required', Rule::in(array_keys(Student::PAYMENT_METHODS))],
+            'payment_plan' => ['required', Rule::in(array_keys(Student::PAYMENT_PLANS))],
+        ];
+
+        if ($student) {
+            $rules['extra_classes'] = ['nullable', 'array'];
+            $rules['extra_classes.*.type'] = ['required', Rule::in(array_keys(StudentExtraClass::TYPES))];
+            $rules['extra_classes.*.quantity'] = ['required', 'integer', 'min:1', 'max:20'];
+            $rules['extra_classes.*.notes'] = ['nullable', 'string', 'max:255'];
+        }
+
+        $validated = $request->validate($rules);
+        $course = Course::query()->findOrFail($validated['course_id']);
+        $payment = $this->paymentFields($course, $request, $isHome);
+
+        return [
+            'course_id' => $validated['course_id'],
+            'name' => $validated['name'],
+            'last_name' => $validated['last_name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'address' => $validated['address'],
+            'city' => $validated['city'],
+            'state' => $validated['state'],
+            'zip' => $validated['zip'],
+            'country' => $validated['country'],
+            'is_home_class' => $isHome,
+            'meeting_point' => null,
+            'meeting_lat' => null,
+            'meeting_lng' => null,
+            ...$payment,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function paymentFields(Course $course, Request $request, bool $isHome): array
+    {
+        $subtotal = round((float) $course->cost + Student::homeClassFee($isHome), 2);
+        $parsed = DiscountInput::parse($request->input('discount'), $subtotal);
+        $percent = $parsed['percent'];
+        $amount = $parsed['amount'];
+
+        return [
+            'payment_subtotal' => $subtotal,
+            'discount_percent' => $percent,
+            'discount_amount' => $amount,
+            'payment_total' => round(max(0, $subtotal - $amount), 2),
+            'payment_method' => $request->input('payment_method'),
+            'payment_plan' => (int) $request->input('payment_plan'),
+        ];
     }
 
     public function destroy(Student $student): RedirectResponse

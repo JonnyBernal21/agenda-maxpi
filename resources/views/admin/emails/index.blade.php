@@ -8,10 +8,7 @@
         $query = array_filter(['student_id' => $selectedStudent?->id]);
     @endphp
 
-    <div class="page-header">
-        <h1 class="page-title mb-1">Correos</h1>
-        <p class="page-subtitle mb-0">Vista previa de las plantillas que se envían a los alumnos.</p>
-    </div>
+    @include('admin.partials.settings-shell', ['tab' => 'correos'])
 
     <div class="row g-4">
         <div class="col-lg-4 col-xl-3">

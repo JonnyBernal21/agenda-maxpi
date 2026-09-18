@@ -12,6 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [
+            \App\Http\Middleware\ShareAppSetting::class,
+        ]);
+
         $middleware->redirectGuestsTo(function (Request $request) {
             if ($request->is('instructor', 'instructor/*')) {
                 return route('instructor.login');
@@ -27,6 +31,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return route('admin.dashboard');
         });
+
+        $middleware->alias([
+            'permission' => \App\Http\Middleware\EnsurePermission::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

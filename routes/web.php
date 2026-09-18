@@ -2,15 +2,22 @@
 
 use App\Http\Controllers\Admin\AvailabilityController as AdminAvailabilityController;
 use App\Http\Controllers\Admin\CalendarController as AdminCalendarController;
+use App\Http\Controllers\Admin\CourseController as AdminCourseController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmailPreviewController;
+use App\Http\Controllers\Admin\ExpenseController as AdminExpenseController;
 use App\Http\Controllers\Admin\InstructorController as AdminInstructorController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\ReservaController as AdminReservaController;
+use App\Http\Controllers\Admin\RolePermissionController as AdminRolePermissionController;
+use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\StudentController as AdminStudentController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
 use App\Http\Controllers\Auth\InstructorLoginController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\CourseController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\Instructor\CalendarController as InstructorCalendarController;
 use App\Http\Controllers\Instructor\DashboardController as InstructorDashboardController;
 use App\Http\Controllers\InstructorController;
@@ -25,7 +32,7 @@ Route::middleware('guest:web')->group(function () {
     Route::post('/login', [LoginController::class, 'store']);
 });
 
-Route::middleware('auth:web')->group(function () {
+Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::get('/admin', DashboardController::class)->name('admin.dashboard');
@@ -42,10 +49,29 @@ Route::middleware('auth:web')->group(function () {
         ->where('template', '[A-Za-z0-9-]+')
         ->name('admin.emails.html');
 
+    Route::get('/admin/ajustes', [AdminSettingController::class, 'index'])->name('admin.settings.index');
+    Route::put('/admin/ajustes', [AdminSettingController::class, 'update'])->name('admin.settings.update');
+    Route::get('/admin/ajustes/usuarios', [AdminUserController::class, 'index'])->name('admin.settings.users');
+    Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
+    Route::put('/admin/users/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
+    Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
+    Route::get('/admin/ajustes/permisos', [AdminRolePermissionController::class, 'index'])->name('admin.settings.permissions');
+    Route::put('/admin/ajustes/permisos', [AdminRolePermissionController::class, 'update'])->name('admin.settings.permissions.update');
+
     Route::get('/admin/vehiculos', [AdminVehicleController::class, 'index'])->name('admin.vehicles.index');
     Route::post('/admin/vehicles', [VehicleController::class, 'store'])->name('admin.vehicles.store');
     Route::put('/admin/vehicles/{vehicle}', [VehicleController::class, 'update'])->name('admin.vehicles.update');
     Route::delete('/admin/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->name('admin.vehicles.destroy');
+
+    Route::get('/admin/cursos', [AdminCourseController::class, 'index'])->name('admin.courses.index');
+    Route::post('/admin/courses', [CourseController::class, 'store'])->name('admin.courses.store');
+    Route::put('/admin/courses/{course}', [CourseController::class, 'update'])->name('admin.courses.update');
+    Route::delete('/admin/courses/{course}', [CourseController::class, 'destroy'])->name('admin.courses.destroy');
+
+    Route::get('/admin/gastos', [AdminExpenseController::class, 'index'])->name('admin.expenses.index');
+    Route::post('/admin/expenses', [ExpenseController::class, 'store'])->name('admin.expenses.store');
+    Route::put('/admin/expenses/{expense}', [ExpenseController::class, 'update'])->name('admin.expenses.update');
+    Route::delete('/admin/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('admin.expenses.destroy');
 
     Route::get('/admin/students/search', [StudentController::class, 'search'])->name('admin.students.search');
     Route::get('/admin/students/{student}/horarios', [StudentController::class, 'schedule'])->name('admin.students.schedule');

@@ -163,6 +163,10 @@ class StudentExtraClassesTest extends TestCase
             'state' => $student->state,
             'zip' => $student->zip,
             'country' => $student->country,
+            'is_home_class' => 0,
+            'discount' => '',
+            'payment_method' => Student::PAYMENT_CASH,
+            'payment_plan' => 1,
             'extra_classes' => $extras,
         ];
     }

@@ -21,7 +21,7 @@ class StudentFactory extends Factory
     public function definition(): array
     {
         return [
-            'course_id' => Course::query()->inRandomOrder()->value('id'),
+            'course_id' => Course::factory(),
             'name' => fake()->firstName(),
             'last_name' => fake()->lastName(),
             'email' => fake()->unique()->safeEmail(),
@@ -32,6 +32,9 @@ class StudentFactory extends Factory
             'state' => fake()->state(),
             'zip' => fake()->postcode(),
             'country' => fake()->country(),
+            'is_home_class' => false,
+            'payment_method' => Student::PAYMENT_CASH,
+            'payment_plan' => 1,
         ];
     }
 }

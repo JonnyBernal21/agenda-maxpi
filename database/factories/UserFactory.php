@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -24,6 +25,7 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'role_id' => fn () => Role::query()->where('slug', Role::ADMIN)->value('id'),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
