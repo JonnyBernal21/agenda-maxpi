@@ -34,4 +34,6 @@ final class SchoolProfile
     public const DEFAULT_CURRENCY = 'MXN';
 
     public const DEFAULT_COUNTRY = 'México';
+
+    public const DEFAULT_HOME_CLASS_FEE = 100.00;
 }

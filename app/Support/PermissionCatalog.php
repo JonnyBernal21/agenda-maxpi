@@ -16,6 +16,10 @@ final class PermissionCatalog
         ],
         'Operación' => [
             'students.manage' => 'Gestionar alumnos',
+            'students.view' => 'Visualizar alumnos',
+            'students.edit' => 'Editar alumnos',
+            'students.delete' => 'Eliminar alumnos',
+            'students.discount' => 'Aplicar descuentos',
             'instructors.manage' => 'Gestionar instructores',
             'vehicles.manage' => 'Gestionar vehículos',
             'courses.manage' => 'Gestionar cursos',

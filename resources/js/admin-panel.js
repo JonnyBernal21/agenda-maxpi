@@ -48,7 +48,7 @@ const weekdayName = (isoDate) => {
     return name ? name.charAt(0).toUpperCase() + name.slice(1) : '—';
 };
 
-const emptyPreviewRow = '<tr class="schedule-preview-empty"><td colspan="6" class="text-muted text-center py-3">Selecciona fecha, días, hora e instructor.</td></tr>';
+const emptyPreviewRow = '<tr class="schedule-preview-empty"><td colspan="6"><div class="schedule-preview-empty__box"><i class="bi bi-calendar-week"></i><p>Selecciona fecha, días, hora e instructor para ver las clases.</p></div></td></tr>';
 
 const formatTimeLabel = (time) => {
     const [hour, minute] = time.split(':').map(Number);
@@ -138,6 +138,8 @@ const initAssignSchedule = () => {
     const tableBody = document.getElementById('schedulePreviewBody');
     const conflictAlert = document.getElementById('scheduleConflictAlert');
     const submitBtn = document.getElementById('assignScheduleSubmit');
+    const studentNameEl = document.getElementById('scheduleStudentName');
+    const studentInitialEl = document.getElementById('scheduleStudentInitial');
     const numClasses = Number(modalEl.dataset.numClasses || 0);
     const conflictsUrl = modalEl.dataset.conflictsUrl || '';
     const minStartDate = modalEl.dataset.minStartDate || '';
@@ -282,7 +284,7 @@ const initAssignSchedule = () => {
 
     const statusHtml = (conflict) => {
         if (!conflict?.busy) {
-            return '<span class="text-success">Disponible</span>';
+            return '<span class="schedule-cupo schedule-cupo--ok"><i class="bi bi-check-circle-fill"></i> Disponible</span>';
         }
 
         const reasons = [];
@@ -298,7 +300,7 @@ const initAssignSchedule = () => {
         const label = reasons.length > 0 ? reasons.join(' y ') : 'Ocupado';
         const next = conflict.next_time ? ` · siguiente ${formatTimeLabel(conflict.next_time)}` : '';
 
-        return `<span class="text-danger">${label}${next}</span>`;
+        return `<span class="schedule-cupo schedule-cupo--busy"><i class="bi bi-exclamation-circle-fill"></i> ${label}${next}</span>`;
     };
 
     const collectPreviewSlots = () =>
@@ -496,7 +498,7 @@ const initAssignSchedule = () => {
         }
 
         if (!startDate || weekdays.length === 0 || !time || numClasses < 1) {
-            summary.textContent = 'Marca o quita días para actualizar la tabla.';
+            summary.textContent = 'Completa los pasos de arriba para armar la tabla.';
             tableBody.innerHTML = emptyPreviewRow;
             previewDatesList = [];
             setSubmitEnabled(false);
@@ -611,7 +613,17 @@ const initAssignSchedule = () => {
         }
     });
 
+    const syncStudentInitial = () => {
+        if (!studentInitialEl || !studentNameEl) {
+            return;
+        }
+
+        const name = (studentNameEl.textContent || '').trim();
+        studentInitialEl.textContent = name ? name.charAt(0).toLocaleUpperCase('es-MX') : 'A';
+    };
+
     modalEl.addEventListener('shown.bs.modal', () => {
+        syncStudentInitial();
         applyMinStartDate();
         updateStartHint();
         refreshPreview();
@@ -1508,6 +1520,7 @@ const initStudentAdmin = () => {
         const title = document.getElementById('studentFormTitle');
         const icon = document.getElementById('studentFormIcon');
         const hint = document.getElementById('studentFormHint');
+        const kicker = document.getElementById('studentFormKicker');
         const submitLabel = document.getElementById('studentFormSubmitLabel');
 
         if (title) {
@@ -1516,6 +1529,10 @@ const initStudentAdmin = () => {
 
         if (icon) {
             icon.className = 'bi bi-person-plus';
+        }
+
+        if (kicker) {
+            kicker.textContent = 'Registro en 4 pasos';
         }
 
         hint?.classList.remove('d-none');
@@ -1551,6 +1568,7 @@ const initStudentAdmin = () => {
         const title = document.getElementById('studentFormTitle');
         const icon = document.getElementById('studentFormIcon');
         const hint = document.getElementById('studentFormHint');
+        const kicker = document.getElementById('studentFormKicker');
         const submitLabel = document.getElementById('studentFormSubmitLabel');
 
         if (title) {
@@ -1559,6 +1577,10 @@ const initStudentAdmin = () => {
 
         if (icon) {
             icon.className = 'bi bi-pencil';
+        }
+
+        if (kicker) {
+            kicker.textContent = 'Actualiza la ficha del alumno';
         }
 
         hint?.classList.add('d-none');
@@ -2639,6 +2661,62 @@ const initSoftDelete = () => {
     });
 };
 
+const initStudentPay = () => {
+    const modalEl = document.getElementById('studentPayModal');
+    const form = document.getElementById('studentPayForm');
+
+    if (!modalEl || !form) {
+        return;
+    }
+
+    const nameEl = document.getElementById('studentPayName');
+    const balanceEl = document.getElementById('studentPayBalance');
+    const studentIdInput = document.getElementById('studentPayStudentId');
+    const amountInput = document.getElementById('student_pay_amount');
+    const methodInput = document.getElementById('student_pay_method');
+    const dateInput = document.getElementById('student_pay_date');
+
+    const fillPayForm = (button) => {
+        form.action = button.dataset.payUrl || '';
+
+        if (studentIdInput) {
+            studentIdInput.value = button.dataset.studentId || '';
+        }
+
+        if (nameEl) {
+            nameEl.textContent = button.dataset.studentName || 'Alumno';
+        }
+
+        if (balanceEl) {
+            balanceEl.textContent = button.dataset.balanceLabel || '$0.00';
+        }
+
+        if (amountInput) {
+            amountInput.value = '';
+            amountInput.max = button.dataset.balance || '';
+        }
+
+        if (methodInput) {
+            methodInput.value = button.dataset.paymentMethod || '';
+        }
+
+        if (dateInput && !dateInput.value) {
+            dateInput.value = new Date().toISOString().slice(0, 10);
+        }
+    };
+
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('.js-student-pay');
+
+        if (!button) {
+            return;
+        }
+
+        fillPayForm(button);
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    });
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     initDocumentUploads();
     initStudentAdmin();
@@ -2650,6 +2728,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initSettingsBrand();
     initRolePermissions();
     initSoftDelete();
+    initStudentPay();
 
     const modals = [
         { id: 'addStudentModal', form: 'student' },
@@ -2662,6 +2741,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'assignScheduleModal', form: 'schedule' },
         { id: 'scheduleSummaryModal' },
         { id: 'studentScheduleModal' },
+        { id: 'studentPayModal', form: 'student-payment' },
     ];
 
     const cleanupModalOverlay = () => {

@@ -12,13 +12,13 @@
                     @endisset
                 </div>
             </div>
-            @isset($action)
+            @if (! empty($action))
                 <div>{!! $action !!}</div>
-            @endisset
+            @endif
         </div>
     </div>
     <div class="panel-card__body p-0">
-        <div class="table-responsive p-3 pt-0">
+        <div class="{{ ! empty($scroll) ? 'panel-table-scroll p-3 pt-0' : 'table-responsive p-3 pt-0' }}">
             {!! $table !!}
         </div>
     </div>

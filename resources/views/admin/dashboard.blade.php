@@ -14,31 +14,55 @@
 
     <div class="row g-3 mb-4">
         <div class="col-6 col-lg-3">
-            <a href="{{ route('admin.students.index') }}" class="text-decoration-none">
+            @canany(['students.view', 'students.manage', 'students.edit', 'students.delete'])
+                <a href="{{ route('admin.students.index') }}" class="text-decoration-none">
+                    <div class="stat-card">
+                        <div class="stat-card__icon"><i class="bi bi-people"></i></div>
+                        <p class="stat-card__label">Alumnos</p>
+                        <p class="stat-card__value">{{ $studentsCount }}</p>
+                    </div>
+                </a>
+            @else
                 <div class="stat-card">
                     <div class="stat-card__icon"><i class="bi bi-people"></i></div>
                     <p class="stat-card__label">Alumnos</p>
                     <p class="stat-card__value">{{ $studentsCount }}</p>
                 </div>
-            </a>
+            @endcan
         </div>
         <div class="col-6 col-lg-3">
-            <a href="{{ route('admin.instructors.index') }}" class="text-decoration-none">
+            @can('instructors.manage')
+                <a href="{{ route('admin.instructors.index') }}" class="text-decoration-none">
+                    <div class="stat-card">
+                        <div class="stat-card__icon"><i class="bi bi-person-badge"></i></div>
+                        <p class="stat-card__label">Instructores</p>
+                        <p class="stat-card__value">{{ $instructorsCount }}</p>
+                    </div>
+                </a>
+            @else
                 <div class="stat-card">
                     <div class="stat-card__icon"><i class="bi bi-person-badge"></i></div>
                     <p class="stat-card__label">Instructores</p>
                     <p class="stat-card__value">{{ $instructorsCount }}</p>
                 </div>
-            </a>
+            @endcan
         </div>
         <div class="col-6 col-lg-3">
-            <a href="{{ route('admin.vehicles.index') }}" class="text-decoration-none">
+            @can('vehicles.manage')
+                <a href="{{ route('admin.vehicles.index') }}" class="text-decoration-none">
+                    <div class="stat-card">
+                        <div class="stat-card__icon"><i class="bi bi-car-front"></i></div>
+                        <p class="stat-card__label">Vehículos</p>
+                        <p class="stat-card__value">{{ $vehiclesCount }}</p>
+                    </div>
+                </a>
+            @else
                 <div class="stat-card">
                     <div class="stat-card__icon"><i class="bi bi-car-front"></i></div>
                     <p class="stat-card__label">Vehículos</p>
                     <p class="stat-card__value">{{ $vehiclesCount }}</p>
                 </div>
-            </a>
+            @endcan
         </div>
         <div class="col-6 col-lg-3">
             <div class="stat-card">
@@ -49,69 +73,94 @@
         </div>
     </div>
 
-    <div class="action-bar d-flex flex-wrap align-items-center justify-content-between gap-3">
-        <div>
-            <p class="fw-semibold mb-0 text-dark">Acciones rápidas</p>
-            <p class="small text-muted mb-0">Registra alumnos, instructores, vehículos, cursos, gastos o agenda clases</p>
+    @php
+        $hasQuickActions = collect([
+            'students.manage',
+            'instructors.manage',
+            'vehicles.manage',
+            'courses.manage',
+            'expenses.manage',
+            'reservas.manage',
+        ])->contains(fn ($permission) => auth()->user()?->can($permission));
+    @endphp
+
+    @if ($hasQuickActions)
+        <div class="action-bar d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <p class="fw-semibold mb-0 text-dark">Acciones rápidas</p>
+                <p class="small text-muted mb-0">Solo se muestran las acciones permitidas para tu rol.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                @can('students.manage')
+                    <button
+                        type="button"
+                        class="btn btn-brand d-flex align-items-center gap-2"
+                        data-bs-toggle="modal"
+                        data-bs-target="#addStudentModal"
+                    >
+                        <i class="bi bi-person-plus"></i>
+                        Agregar alumno
+                    </button>
+                @endcan
+                @can('instructors.manage')
+                    <button
+                        type="button"
+                        class="btn btn-brand-outline d-flex align-items-center gap-2"
+                        data-bs-toggle="modal"
+                        data-bs-target="#addInstructorModal"
+                    >
+                        <i class="bi bi-person-badge"></i>
+                        Agregar instructor
+                    </button>
+                @endcan
+                @can('vehicles.manage')
+                    <button
+                        type="button"
+                        class="btn btn-brand-outline d-flex align-items-center gap-2"
+                        data-bs-toggle="modal"
+                        data-bs-target="#addVehicleModal"
+                    >
+                        <i class="bi bi-car-front"></i>
+                        Agregar vehículo
+                    </button>
+                @endcan
+                @can('courses.manage')
+                    <button
+                        type="button"
+                        class="btn btn-brand-outline d-flex align-items-center gap-2"
+                        data-bs-toggle="modal"
+                        data-bs-target="#addCourseModal"
+                    >
+                        <i class="bi bi-journal-plus"></i>
+                        Agregar curso
+                    </button>
+                @endcan
+                @can('expenses.manage')
+                    <button
+                        type="button"
+                        class="btn btn-brand-outline d-flex align-items-center gap-2"
+                        data-bs-toggle="modal"
+                        data-bs-target="#addExpenseModal"
+                    >
+                        <i class="bi bi-receipt"></i>
+                        Agregar gasto
+                    </button>
+                @endcan
+                @can('reservas.manage')
+                    <button
+                        type="button"
+                        class="btn btn-brand-outline d-flex align-items-center gap-2"
+                        data-bs-toggle="modal"
+                        data-bs-target="#scheduleClassModal"
+                        id="openScheduleManualBtn"
+                    >
+                        <i class="bi bi-calendar-plus"></i>
+                        Agendar clase
+                    </button>
+                @endcan
+            </div>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-            <button
-                type="button"
-                class="btn btn-brand d-flex align-items-center gap-2"
-                data-bs-toggle="modal"
-                data-bs-target="#addStudentModal"
-            >
-                <i class="bi bi-person-plus"></i>
-                Agregar alumno
-            </button>
-            <button
-                type="button"
-                class="btn btn-brand-outline d-flex align-items-center gap-2"
-                data-bs-toggle="modal"
-                data-bs-target="#addInstructorModal"
-            >
-                <i class="bi bi-person-badge"></i>
-                Agregar instructor
-            </button>
-            <button
-                type="button"
-                class="btn btn-brand-outline d-flex align-items-center gap-2"
-                data-bs-toggle="modal"
-                data-bs-target="#addVehicleModal"
-            >
-                <i class="bi bi-car-front"></i>
-                Agregar vehículo
-            </button>
-            <button
-                type="button"
-                class="btn btn-brand-outline d-flex align-items-center gap-2"
-                data-bs-toggle="modal"
-                data-bs-target="#addCourseModal"
-            >
-                <i class="bi bi-journal-plus"></i>
-                Agregar curso
-            </button>
-            <button
-                type="button"
-                class="btn btn-brand-outline d-flex align-items-center gap-2"
-                data-bs-toggle="modal"
-                data-bs-target="#addExpenseModal"
-            >
-                <i class="bi bi-receipt"></i>
-                Agregar gasto
-            </button>
-            <button
-                type="button"
-                class="btn btn-brand-outline d-flex align-items-center gap-2"
-                data-bs-toggle="modal"
-                data-bs-target="#scheduleClassModal"
-                id="openScheduleManualBtn"
-            >
-                <i class="bi bi-calendar-plus"></i>
-                Agendar clase
-            </button>
-        </div>
-    </div>
+    @endif
 
     <div class="panel-card">
         <div class="panel-card__header">

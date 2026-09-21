@@ -17,21 +17,40 @@ class EnsurePermission
         }
 
         $user = $request->user();
+        $keys = is_array($permission) ? $permission : [$permission];
+        $allowed = $user && collect($keys)->contains(fn (string $key) => $user->hasPermission($key));
 
-        if (! $user || ! $user->hasPermission($permission)) {
+        if (! $allowed) {
             abort(403, 'No tienes permiso para esta sección.');
         }
 
         return $next($request);
     }
 
-    private function permissionFor(string $route): ?string
+    /**
+     * @return string|list<string>|null
+     */
+    private function permissionFor(string $route): string|array|null
     {
         return match (true) {
             str_starts_with($route, 'admin.settings.users') || str_starts_with($route, 'admin.users.') => 'users.manage',
             str_starts_with($route, 'admin.settings.permissions') => 'permissions.manage',
             str_starts_with($route, 'admin.settings') => 'settings.edit',
             str_starts_with($route, 'admin.emails') => 'emails.view',
+            in_array($route, ['admin.students.index', 'admin.students.search'], true) => [
+                'students.view',
+                'students.manage',
+                'students.edit',
+                'students.delete',
+            ],
+            in_array($route, ['admin.students.schedule', 'admin.students.schedule-email'], true) => [
+                'students.view',
+                'students.manage',
+                'students.edit',
+            ],
+            $route === 'admin.students.store' => 'students.manage',
+            $route === 'admin.students.update' || $route === 'admin.students.payments.store' => 'students.edit',
+            $route === 'admin.students.destroy' => 'students.delete',
             str_starts_with($route, 'admin.students') => 'students.manage',
             str_starts_with($route, 'admin.instructors') => 'instructors.manage',
             str_starts_with($route, 'admin.vehicles') => 'vehicles.manage',

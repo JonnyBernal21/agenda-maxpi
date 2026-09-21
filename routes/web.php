@@ -79,6 +79,7 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::put('/admin/students/{student}', [StudentController::class, 'update'])->name('admin.students.update');
     Route::delete('/admin/students/{student}', [StudentController::class, 'destroy'])->name('admin.students.destroy');
     Route::post('/admin/students/{student}/enviar-horarios', [StudentController::class, 'sendSchedule'])->name('admin.students.schedule-email');
+    Route::post('/admin/students/{student}/abonos', [StudentController::class, 'storePayment'])->name('admin.students.payments.store');
     Route::post('/admin/reservas', [AdminReservaController::class, 'store'])->name('admin.reservas.store');
     Route::post('/admin/reservas/horarios', [AdminReservaController::class, 'storeSchedule'])->name('admin.reservas.schedule');
     Route::patch('/admin/reservas/{reserva}/confirm', [AdminReservaController::class, 'confirm'])->name('admin.reservas.confirm');

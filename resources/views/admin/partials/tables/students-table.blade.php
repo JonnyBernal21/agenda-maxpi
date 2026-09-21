@@ -1,12 +1,11 @@
-<table class="table table-hover align-middle admin-datatable w-100 mb-0">
+<table class="table table-hover align-middle admin-datatable admin-datatable--scroll students-datatable mb-0">
     <thead>
         <tr>
             <th>Alumno</th>
-            <th>Correo</th>
-            <th>Teléfono</th>
             <th>Curso</th>
-            <th>Completadas</th>
-            <th>Ciudad</th>
+            <th>Primera clase</th>
+            <th>Clases</th>
+            <th>Pago</th>
             <th class="no-sort">Acciones</th>
         </tr>
     </thead>
@@ -19,32 +18,190 @@
                     'quantity' => $extra->quantity,
                     'notes' => $extra->notes,
                 ])->values();
+                $firstClass = $student->firstClassWhen();
+                $paidAmount = $student->paidAmount();
+                $balanceDue = $student->balanceDue();
+                $paidInFull = $balanceDue <= 0;
+                $addressParts = collect([
+                    $student->address,
+                    $student->city,
+                    $student->state,
+                    $student->zip,
+                    $student->country,
+                ])->filter()->implode(', ');
             @endphp
             <tr>
-                <td>
-                    <span class="fw-semibold">{{ $student->name }} {{ $student->last_name }}</span>
-                    @if ($student->is_home_class)
-                        <span class="table-badge d-block mt-1">A domicilio</span>
-                    @endif
+                <td class="students-table__name-cell">
+                    <div class="students-table__person">
+                        <button
+                            type="button"
+                            class="students-table__toggle"
+                            aria-expanded="false"
+                            aria-label="Ver más información de {{ $student->fullName() }}"
+                        >
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                        <div class="students-table__person-body">
+                            <span class="students-table__name">{{ $student->name }} {{ $student->last_name }}</span>
+                            @if ($student->is_home_class)
+                                <span class="table-badge table-badge--home">A domicilio</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="d-none students-table__details">
+                        <div class="student-details">
+                            <section class="student-details__col">
+                                <h4 class="student-details__heading">Contacto</h4>
+                                <dl class="student-details__list">
+                                    <div class="student-details__row">
+                                        <dt>Correo</dt>
+                                        <dd>{{ $student->email ?: '—' }}</dd>
+                                    </div>
+                                    <div class="student-details__row">
+                                        <dt>Teléfono</dt>
+                                        <dd>{{ $student->phone ?: '—' }}</dd>
+                                    </div>
+                                    <div class="student-details__row">
+                                        <dt>Domicilio</dt>
+                                        <dd>{{ $addressParts !== '' ? $addressParts : '—' }}</dd>
+                                    </div>
+                                    @if ($student->is_home_class && filled($student->meeting_point))
+                                        <div class="student-details__row">
+                                            <dt>Notas</dt>
+                                            <dd>{{ $student->meeting_point }}</dd>
+                                        </div>
+                                    @endif
+                                </dl>
+                            </section>
+                            <section class="student-details__col">
+                                <h4 class="student-details__heading">Curso</h4>
+                                <dl class="student-details__list">
+                                    <div class="student-details__row">
+                                        <dt>Nombre</dt>
+                                        <dd>{{ $student->course?->name ?? 'Sin curso' }}</dd>
+                                    </div>
+                                    <div class="student-details__row">
+                                        <dt>Modalidad</dt>
+                                        <dd>{{ $student->is_home_class ? 'A domicilio' : 'En escuela' }}</dd>
+                                    </div>
+                                    <div class="student-details__row">
+                                        <dt>Primera clase</dt>
+                                        <dd>{{ $firstClass ? $firstClass['date'].' · '.$firstClass['time'] : 'Sin asignar' }}</dd>
+                                    </div>
+                                    <div class="student-details__row">
+                                        <dt>Clases</dt>
+                                        <dd>{{ $student->completed_classes_count ?? 0 }} / {{ $student->allowedClassesCount() }} · {{ $student->remaining_classes }} restantes</dd>
+                                    </div>
+                                    @if ($student->extraClassesCount() > 0)
+                                        <div class="student-details__row">
+                                            <dt>Adicionales</dt>
+                                            <dd>
+                                                {{ $student->extraClassesCount() }}
+                                                @foreach ($student->extraClasses as $extra)
+                                                    · {{ \App\Models\StudentExtraClass::TYPES[$extra->type] ?? $extra->type }} ({{ $extra->quantity }})
+                                                @endforeach
+                                            </dd>
+                                        </div>
+                                    @endif
+                                </dl>
+                            </section>
+                            <section class="student-details__col">
+                                <h4 class="student-details__heading">Pago</h4>
+                                <dl class="student-details__list">
+                                    <div class="student-details__row">
+                                        <dt>Método</dt>
+                                        <dd>{{ $student->paymentMethodLabel() }}</dd>
+                                    </div>
+                                    <div class="student-details__row">
+                                        <dt>Plan</dt>
+                                        <dd>{{ $student->paymentPlanLabel() }}</dd>
+                                    </div>
+                                    @if ((int) $student->payment_plan > 1)
+                                        <div class="student-details__row">
+                                            <dt>Abono inicial</dt>
+                                            <dd>${{ number_format((float) $student->payment_initial, 2) }}</dd>
+                                        </div>
+                                    @endif
+                                    <div class="student-details__row">
+                                        <dt>Subtotal</dt>
+                                        <dd>${{ number_format((float) $student->payment_subtotal, 2) }}</dd>
+                                    </div>
+                                    @if ((float) $student->discount_amount > 0)
+                                        <div class="student-details__row">
+                                            <dt>Descuento</dt>
+                                            <dd>${{ number_format((float) $student->discount_amount, 2) }}</dd>
+                                        </div>
+                                    @endif
+                                    <div class="student-details__row">
+                                        <dt>Total</dt>
+                                        <dd>${{ number_format((float) $student->payment_total, 2) }}</dd>
+                                    </div>
+                                    <div class="student-details__row">
+                                        <dt>Abonado</dt>
+                                        <dd>${{ number_format($paidAmount, 2) }}</dd>
+                                    </div>
+                                    <div class="student-details__row">
+                                        <dt>Estado</dt>
+                                        <dd>
+                                            @if ($paidInFull)
+                                                <span class="table-badge table-badge--paid">Liquidado</span>
+                                            @else
+                                                <span class="table-badge table-badge--due">Debe ${{ number_format($balanceDue, 2) }}</span>
+                                            @endif
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </section>
+                        </div>
+                    </div>
                 </td>
-                <td>{{ $student->email }}</td>
-                <td>{{ $student->phone }}</td>
                 <td>
                     @if ($student->course)
-                        <span class="table-badge">{{ $student->course->name }}</span>
+                        <span class="table-badge table-badge--course">{{ $student->course->name }}</span>
                     @else
                         <span class="text-muted">—</span>
                     @endif
                 </td>
                 <td>
-                    <span class="small">
+                    @if ($firstClass)
+                        <span class="students-table__date">{{ $firstClass['date'] }}</span>
+                        <span class="students-table__time">{{ $firstClass['time'] }}</span>
+                    @else
+                        <span class="text-muted">Sin asignar</span>
+                    @endif
+                </td>
+                <td>
+                    <span class="students-table__progress">
                         {{ $student->completed_classes_count ?? 0 }} / {{ $student->allowedClassesCount() }}
                     </span>
                     <span class="text-muted small d-block">
                         {{ $student->remaining_classes }} restantes
                     </span>
                 </td>
-                <td>{{ $student->city }}</td>
+                <td>
+                    <div class="student-pay-cell">
+                        @if ($paidInFull)
+                            <span class="table-badge table-badge--paid">Liquidado</span>
+                        @else
+                            <span class="table-badge table-badge--due">Debe ${{ number_format($balanceDue, 2) }}</span>
+                            @can('students.edit')
+                            <button
+                                type="button"
+                                class="btn student-abonar-btn js-student-pay"
+                                data-student-id="{{ $student->id }}"
+                                data-student-name="{{ $student->fullName() }}"
+                                data-balance="{{ number_format($balanceDue, 2, '.', '') }}"
+                                data-balance-label="${{ number_format($balanceDue, 2) }}"
+                                data-payment-method="{{ $student->payment_method }}"
+                                data-pay-url="{{ route('admin.students.payments.store', $student) }}"
+                            >
+                                <i class="bi bi-cash-coin"></i>
+                                Abonar
+                            </button>
+                            @endcan
+                        @endif
+                    </div>
+                </td>
                 <td>
                     <div class="table-actions">
                         <button
@@ -82,6 +239,7 @@
                         >
                             <i class="bi bi-envelope"></i>
                         </button>
+                        @can('students.edit')
                         <button
                             type="button"
                             class="btn btn-brand-outline js-edit-student"
@@ -101,12 +259,16 @@
                             data-course-classes="{{ $student->course?->num_classes ?? 0 }}"
                             data-extra-classes='@json($extraClassesForForm)'
                             data-is-home-class="{{ $student->is_home_class ? '1' : '0' }}"
+                            data-meeting-point="{{ $student->meeting_point }}"
                             data-discount="{{ $student->discountInput() }}"
                             data-payment-method="{{ $student->payment_method }}"
                             data-payment-plan="{{ $student->payment_plan }}"
+                            data-payment-initial="{{ $student->payment_plan > 1 ? number_format((float) $student->payment_initial, 2, '.', '') : '' }}"
                         >
                             <i class="bi bi-pencil"></i>
                         </button>
+                        @endcan
+                        @can('students.delete')
                         <form
                             method="POST"
                             action="{{ route('admin.students.destroy', $student) }}"
@@ -125,6 +287,7 @@
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>
+                        @endcan
                     </div>
                 </td>
             </tr>

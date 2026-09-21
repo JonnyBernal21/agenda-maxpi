@@ -148,9 +148,11 @@ class StudentController extends Controller
             'zip' => ['required', 'string', 'max:255'],
             'country' => ['required', 'string', 'max:255'],
             'is_home_class' => ['required', 'boolean'],
+            'meeting_point' => ['nullable', 'string', 'max:255'],
             'discount' => ['nullable', 'string', 'max:20'],
             'payment_method' => ['required', Rule::in(array_keys(Student::PAYMENT_METHODS))],
             'payment_plan' => ['required', Rule::in(array_keys(Student::PAYMENT_PLANS))],
+            'payment_initial' => ['nullable', 'numeric', 'min:0'],
         ];
 
         if ($student) {
@@ -162,7 +164,7 @@ class StudentController extends Controller
 
         $validated = $request->validate($rules);
         $course = Course::query()->findOrFail($validated['course_id']);
-        $payment = $this->paymentFields($course, $request, $isHome);
+        $payment = $this->paymentFields($course, $request, $isHome, $student);
 
         return [
             'course_id' => $validated['course_id'],
@@ -176,7 +178,9 @@ class StudentController extends Controller
             'zip' => $validated['zip'],
             'country' => $validated['country'],
             'is_home_class' => $isHome,
-            'meeting_point' => null,
+            'meeting_point' => $isHome && filled($validated['meeting_point'] ?? null)
+                ? trim((string) $validated['meeting_point'])
+                : null,
             'meeting_lat' => null,
             'meeting_lng' => null,
             ...$payment,
@@ -186,20 +190,55 @@ class StudentController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function paymentFields(Course $course, Request $request, bool $isHome): array
+    private function paymentFields(Course $course, Request $request, bool $isHome, ?Student $student = null): array
     {
         $subtotal = round((float) $course->cost + Student::homeClassFee($isHome), 2);
-        $parsed = DiscountInput::parse($request->input('discount'), $subtotal);
-        $percent = $parsed['percent'];
-        $amount = $parsed['amount'];
+        $canDiscount = $request->user()?->can('students.discount') ?? false;
+
+        if ($canDiscount) {
+            $parsed = DiscountInput::parse($request->input('discount'), $subtotal);
+            $percent = $parsed['percent'];
+            $amount = $parsed['amount'];
+        } elseif ($student) {
+            $percent = (float) $student->discount_percent;
+            $amount = min((float) $student->discount_amount, $subtotal);
+        } else {
+            $percent = 0.0;
+            $amount = 0.0;
+        }
+
+        $total = round(max(0, $subtotal - $amount), 2);
+        $plan = (int) $request->input('payment_plan');
+        $initial = 0.0;
+
+        if ($plan > 1) {
+            $request->validate([
+                'payment_initial' => [
+                    'required',
+                    'numeric',
+                    'min:0.01',
+                    function (string $attribute, mixed $value, \Closure $fail) use ($total): void {
+                        if (round((float) $value, 2) > $total) {
+                            $fail('El abono inicial no puede ser mayor al total.');
+                        }
+                    },
+                ],
+            ], [
+                'payment_initial.required' => 'Indica la cantidad inicial abonada.',
+                'payment_initial.min' => 'El abono inicial debe ser mayor a cero.',
+            ]);
+
+            $initial = round((float) $request->input('payment_initial'), 2);
+        }
 
         return [
             'payment_subtotal' => $subtotal,
             'discount_percent' => $percent,
             'discount_amount' => $amount,
-            'payment_total' => round(max(0, $subtotal - $amount), 2),
+            'payment_total' => $total,
             'payment_method' => $request->input('payment_method'),
-            'payment_plan' => (int) $request->input('payment_plan'),
+            'payment_plan' => $plan,
+            'payment_initial' => $initial,
         ];
     }
 
@@ -279,5 +318,46 @@ class StudentController extends Controller
             'message' => "Registro exitoso. Horarios enviados por correo a {$student->email}.",
             'email' => $student->email,
         ]);
+    }
+
+    public function storePayment(Request $request, Student $student): RedirectResponse
+    {
+        $student->load('payments');
+        $balance = $student->balanceDue();
+        $fallback = URL::previous() ?: route('admin.students.index');
+
+        if ($balance <= 0) {
+            return redirect()
+                ->to($fallback)
+                ->with('success', "{$student->fullName()} ya liquidó el curso.");
+        }
+
+        $validated = $request->validate([
+            'amount' => [
+                'required',
+                'numeric',
+                'min:0.01',
+                function (string $attribute, mixed $value, \Closure $fail) use ($balance): void {
+                    if (round((float) $value, 2) > $balance) {
+                        $fail('El abono no puede ser mayor al saldo pendiente.');
+                    }
+                },
+            ],
+            'payment_method' => ['required', Rule::in(array_keys(Student::PAYMENT_METHODS))],
+            'paid_at' => ['nullable', 'date'],
+        ]);
+
+        $payment = $student->recordInstallment(
+            (float) $validated['amount'],
+            $validated['payment_method'],
+            $validated['paid_at'] ?? now()->toDateString(),
+        );
+
+        $remaining = $student->fresh(['payments'])->balanceDue();
+        $message = $remaining <= 0
+            ? "Se registró el abono de {$student->fullName()}. El curso quedó liquidado."
+            : 'Se registró el abono de $'.number_format((float) $payment?->amount, 2).'. Saldo pendiente: $'.number_format($remaining, 2).'.';
+
+        return redirect()->to($fallback)->with('success', $message);
     }
 }

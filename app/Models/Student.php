@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasUppercasePersonFields;
+use App\Services\SettingService;
 use App\Support\DiscountInput;
+use App\Support\SchoolProfile;
 use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -70,6 +73,7 @@ class Student extends Authenticatable
         'payment_total',
         'payment_method',
         'payment_plan',
+        'payment_initial',
     ];
 
     /**
@@ -95,6 +99,7 @@ class Student extends Authenticatable
             'discount_amount' => 'decimal:2',
             'payment_total' => 'decimal:2',
             'payment_plan' => 'integer',
+            'payment_initial' => 'decimal:2',
         ];
     }
 
@@ -123,9 +128,71 @@ class Student extends Authenticatable
         return $this->hasMany(StudentPayment::class);
     }
 
+    public function firstActiveClass(): HasOne
+    {
+        return $this->hasOne(Reservas::class, 'student_id')
+            ->where('status', '!=', 'cancelada')
+            ->orderBy('date')
+            ->orderBy('time');
+    }
+
+    public function paidAmount(): float
+    {
+        if (array_key_exists('paid_amount', $this->attributes)) {
+            return round((float) $this->attributes['paid_amount'], 2);
+        }
+
+        if ($this->relationLoaded('payments')) {
+            return round((float) $this->payments->sum('amount'), 2);
+        }
+
+        return round((float) $this->payments()->sum('amount'), 2);
+    }
+
+    public function balanceDue(): float
+    {
+        return round(max(0, (float) $this->payment_total - $this->paidAmount()), 2);
+    }
+
+    public function isPaidInFull(): bool
+    {
+        return $this->balanceDue() <= 0;
+    }
+
+    /**
+     * @return array{date: string, time: string}|null
+     */
+    public function firstClassWhen(): ?array
+    {
+        $clase = $this->relationLoaded('firstActiveClass')
+            ? $this->firstActiveClass
+            : $this->firstActiveClass()->first();
+
+        if (! $clase) {
+            return null;
+        }
+
+        $date = substr((string) $clase->date, 0, 10);
+        $time = Reservas::normalizeTime((string) $clase->time);
+
+        return [
+            'date' => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'),
+            'time' => \Illuminate\Support\Carbon::createFromFormat('H:i', $time)?->format('g:i A') ?? $time,
+        ];
+    }
+
+    public function firstPaymentAmount(): float
+    {
+        if ((int) $this->payment_plan > 1) {
+            return round((float) $this->payment_initial, 2);
+        }
+
+        return round((float) $this->payment_total, 2);
+    }
+
     public function recordPayment(?string $paidAt = null): ?StudentPayment
     {
-        $amount = round((float) $this->payment_total, 2);
+        $amount = $this->firstPaymentAmount();
 
         if ($amount <= 0) {
             return null;
@@ -135,6 +202,21 @@ class Student extends Authenticatable
             'amount' => $amount,
             'paid_at' => $paidAt ?? now()->toDateString(),
             'payment_method' => $this->payment_method,
+        ]);
+    }
+
+    public function recordInstallment(float $amount, ?string $paymentMethod = null, ?string $paidAt = null): ?StudentPayment
+    {
+        $amount = round(min($amount, $this->balanceDue()), 2);
+
+        if ($amount <= 0) {
+            return null;
+        }
+
+        return $this->payments()->create([
+            'amount' => $amount,
+            'paid_at' => $paidAt ?? now()->toDateString(),
+            'payment_method' => $paymentMethod ?: $this->payment_method,
         ]);
     }
 
@@ -207,7 +289,15 @@ class Student extends Authenticatable
 
     public static function homeClassFee(bool $isHomeClass): float
     {
-        return $isHomeClass ? self::HOME_CLASS_FEE : 0.0;
+        if (! $isHomeClass) {
+            return 0.0;
+        }
+
+        try {
+            return app(SettingService::class)->current()->homeClassFee();
+        } catch (\Throwable) {
+            return SchoolProfile::DEFAULT_HOME_CLASS_FEE;
+        }
     }
 
     public function discountInput(): string

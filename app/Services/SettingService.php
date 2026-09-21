@@ -22,7 +22,10 @@ class SettingService
             ]);
         });
 
-        if (! array_key_exists('timezone', $setting->getAttributes()) && Schema::hasColumn('settings', 'timezone')) {
+        if (
+            (Schema::hasColumn('settings', 'timezone') && ! array_key_exists('timezone', $setting->getAttributes()))
+            || (Schema::hasColumn('settings', 'home_class_fee') && ! array_key_exists('home_class_fee', $setting->getAttributes()))
+        ) {
             $this->forget();
 
             return $this->current();

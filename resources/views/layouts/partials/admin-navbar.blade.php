@@ -41,14 +41,14 @@
                         <span>Panel</span>
                     </a>
                 </li>
-                @can('students.manage')
+                @canany(['students.view', 'students.manage', 'students.edit', 'students.delete'])
                     <li class="nav-item">
                         <a class="nav-link @if(request()->routeIs('admin.students.*')) active @endif" href="{{ route('admin.students.index') }}">
                             <i class="bi bi-people"></i>
                             <span>Alumnos</span>
                         </a>
                     </li>
-                @endcan
+                @endcanany
                 @can('instructors.manage')
                     <li class="nav-item">
                         <a class="nav-link @if(request()->routeIs('admin.instructors.*')) active @endif" href="{{ route('admin.instructors.index') }}">

@@ -22,7 +22,18 @@ class Setting extends Model
         'zip',
         'country',
         'currency',
+        'home_class_fee',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'home_class_fee' => 'decimal:2',
+        ];
+    }
 
     public function companyName(): string
     {
@@ -57,5 +68,16 @@ class Setting extends Model
         $value = $this->attributes['country'] ?? null;
 
         return filled($value) ? $value : SchoolProfile::DEFAULT_COUNTRY;
+    }
+
+    public function homeClassFee(): float
+    {
+        $value = $this->attributes['home_class_fee'] ?? null;
+
+        if (! is_numeric($value)) {
+            return SchoolProfile::DEFAULT_HOME_CLASS_FEE;
+        }
+
+        return round(max(0, (float) $value), 2);
     }
 }

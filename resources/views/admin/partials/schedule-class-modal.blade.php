@@ -6,6 +6,7 @@
     aria-hidden="true"
     data-auto-open="{{ ($errors->any() && old('_form') === 'reserva') ? 'true' : 'false' }}"
     data-search-url="{{ route('admin.students.search') }}"
+    data-can-add-student="{{ auth()->user()?->can('students.manage') ? 'true' : 'false' }}"
     data-options-url="{{ route('admin.reservas.options') }}"
     data-check-url="{{ route('admin.reservas.check') }}"
     @if(old('student_id') && old('_form') === 'reserva' && ($oldStudent = \App\Models\Student::find(old('student_id'))))
@@ -77,15 +78,17 @@
 
                         <div id="studentNotFoundAlert" class="alert alert-warning mt-3 d-none" role="alert">
                             No se encontró ningún alumno con ese nombre.
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-brand-outline ms-1"
-                                data-bs-dismiss="modal"
-                                data-bs-toggle="modal"
-                                data-bs-target="#addStudentModal"
-                            >
-                                <i class="bi bi-person-plus"></i> Agregar alumno
-                            </button>
+                            @can('students.manage')
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-brand-outline ms-1"
+                                    data-bs-dismiss="modal"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#addStudentModal"
+                                >
+                                    <i class="bi bi-person-plus"></i> Agregar alumno
+                                </button>
+                            @endcan
                         </div>
 
                         @error('student_id')

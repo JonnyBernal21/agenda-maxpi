@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const searchUrl = modalEl.dataset.searchUrl;
+    const canAddStudent = modalEl.dataset.canAddStudent === 'true';
     const optionsUrl = modalEl.dataset.optionsUrl;
     const checkUrl = modalEl.dataset.checkUrl;
     const searchInput = document.getElementById('studentSearchInput');
@@ -369,9 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (students.length === 0) {
             resultsEl.classList.add('d-none');
-            showNotFound(`
-                No se encontró ningún alumno con ese nombre.
-                <button
+            const addButton = canAddStudent
+                ? `<button
                     type="button"
                     class="btn btn-sm btn-brand-outline ms-1"
                     data-bs-dismiss="modal"
@@ -379,8 +379,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     data-bs-target="#addStudentModal"
                 >
                     <i class="bi bi-person-plus"></i> Agregar alumno
-                </button>
-            `);
+                </button>`
+                : '';
+            showNotFound(`No se encontró ningún alumno con ese nombre. ${addButton}`);
             return;
         }
 

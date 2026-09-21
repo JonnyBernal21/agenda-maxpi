@@ -12,7 +12,10 @@
         'icon' => 'bi-people',
         'title' => 'Registro de alumnos',
         'subtitle' => count($students) . ' alumnos en total',
-        'action' => '<button type="button" class="btn btn-brand btn-sm d-inline-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#addStudentModal"><i class="bi bi-person-plus"></i> Agregar alumno</button>',
+        'scroll' => true,
+        'action' => auth()->user()?->can('students.manage')
+            ? '<button type="button" class="btn btn-brand btn-sm d-inline-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#addStudentModal"><i class="bi bi-person-plus"></i> Agregar alumno</button>'
+            : null,
         'table' => view('admin.partials.tables.students-table', compact('students'))->render(),
     ])
 @endsection

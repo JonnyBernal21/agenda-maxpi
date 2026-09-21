@@ -25,15 +25,34 @@
         @yield('content')
     </main>
 
-    @include('admin.partials.add-student-modal')
-    @include('admin.partials.student-schedule-modal')
-    @include('admin.partials.add-instructor-modal')
-    @include('admin.partials.add-vehicle-modal')
-    @include('admin.partials.add-course-modal')
-    @include('admin.partials.add-expense-modal')
-    @include('admin.partials.schedule-class-modal')
-    @include('admin.partials.assign-schedule-modal')
-    @include('admin.partials.schedule-summary-modal')
+    @canany(['students.manage', 'students.edit'])
+        @include('admin.partials.add-student-modal')
+    @endcanany
+    @can('students.edit')
+        @include('admin.partials.student-payment-modal')
+    @endcan
+    @canany(['students.view', 'students.manage', 'students.edit'])
+        @include('admin.partials.student-schedule-modal')
+    @endcanany
+    @canany(['students.manage', 'reservas.manage'])
+        @include('admin.partials.assign-schedule-modal')
+        @include('admin.partials.schedule-summary-modal')
+    @endcanany
+    @can('instructors.manage')
+        @include('admin.partials.add-instructor-modal')
+    @endcan
+    @can('vehicles.manage')
+        @include('admin.partials.add-vehicle-modal')
+    @endcan
+    @can('courses.manage')
+        @include('admin.partials.add-course-modal')
+    @endcan
+    @can('expenses.manage')
+        @include('admin.partials.add-expense-modal')
+    @endcan
+    @can('reservas.manage')
+        @include('admin.partials.schedule-class-modal')
+    @endcan
 @endsection
 
 @push('scripts')
