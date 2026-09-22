@@ -34,7 +34,6 @@ class SettingsModuleTest extends TestCase
             ->assertSee('Zona horaria')
             ->assertSee('Dirección de la escuela')
             ->assertSee('Teléfono')
-            ->assertSee('Tarifa de clase a domicilio')
             ->assertSee('Usuarios')
             ->assertSee('Permisos por Rol')
             ->assertSee('Correos');
@@ -71,7 +70,6 @@ class SettingsModuleTest extends TestCase
                 'company_name' => 'Autoescuela Norte',
                 'timezone' => 'America/Mexico_City',
                 'currency' => 'MXN',
-                'home_class_fee' => '100',
             ])
             ->assertRedirect(route('admin.settings.index'));
 
@@ -94,7 +92,6 @@ class SettingsModuleTest extends TestCase
                 'company_name' => 'Agenda MaxPi',
                 'timezone' => 'America/Mexico_City',
                 'currency' => 'MXN',
-                'home_class_fee' => '100',
                 'logo' => UploadedFile::fake()->create('logo.png', 40, 'image/png'),
             ])
             ->assertRedirect(route('admin.settings.index'));
@@ -131,7 +128,6 @@ class SettingsModuleTest extends TestCase
                 'zip' => '77500',
                 'country' => 'México',
                 'currency' => 'MXN',
-                'home_class_fee' => '150.50',
             ])
             ->assertRedirect(route('admin.settings.index'));
 
@@ -141,25 +137,6 @@ class SettingsModuleTest extends TestCase
             'email' => 'hola@maxpi.test',
             'address' => 'Av. Insurgentes 100',
             'city' => 'Cancún',
-            'home_class_fee' => 150.50,
-        ]);
-    }
-
-    public function test_admin_can_update_the_home_class_fee(): void
-    {
-        $this->actingAs(User::factory()->create());
-
-        $this->from(route('admin.settings.index'))
-            ->put(route('admin.settings.update'), [
-                'company_name' => 'Agenda MaxPi',
-                'timezone' => 'America/Mexico_City',
-                'currency' => 'MXN',
-                'home_class_fee' => '250.00',
-            ])
-            ->assertRedirect(route('admin.settings.index'));
-
-        $this->assertDatabaseHas('settings', [
-            'home_class_fee' => 250.00,
         ]);
     }
 

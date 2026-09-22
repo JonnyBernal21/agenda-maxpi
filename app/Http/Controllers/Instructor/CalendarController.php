@@ -59,6 +59,13 @@ class CalendarController extends Controller
                         'vehicle' => $vehicleLabel,
                         'classNumber' => $classNumber,
                         'isHomeClass' => $isHomeClass,
+                        ...($reserva->student?->calendarHomeProps() ?? [
+                            'isHomeClass' => false,
+                            'meetingPoint' => null,
+                            'meetingLat' => null,
+                            'meetingLng' => null,
+                            'notes' => null,
+                        ]),
                         'status' => $reserva->status,
                         'date' => $reserva->date,
                         'time' => $reserva->time,

@@ -37,4 +37,20 @@ class DiscountInputTest extends TestCase
         $this->assertSame('250.00', DiscountInput::display(6.25, 250));
         $this->assertSame('', DiscountInput::display(0, 0));
     }
+
+    public function test_it_parses_a_surcharge_amount_without_capping_to_the_base(): void
+    {
+        $parsed = DiscountInput::parseSurcharge('100', 3500);
+
+        $this->assertSame(100.0, $parsed['amount']);
+        $this->assertSame(2.86, $parsed['percent']);
+    }
+
+    public function test_it_parses_a_surcharge_percent_over_the_base(): void
+    {
+        $parsed = DiscountInput::parseSurcharge('%10', 3500);
+
+        $this->assertSame(10.0, $parsed['percent']);
+        $this->assertSame(350.0, $parsed['amount']);
+    }
 }

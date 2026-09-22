@@ -67,6 +67,7 @@ class StudentController extends Controller
             $student = Student::query()->create([
                 ...$payload,
                 'password' => 'password',
+                'created_by' => auth()->id(),
             ]);
 
             $student->recordPayment();
@@ -147,8 +148,12 @@ class StudentController extends Controller
             'state' => ['required', 'string', 'max:255'],
             'zip' => ['required', 'string', 'max:255'],
             'country' => ['required', 'string', 'max:255'],
+            'general_notes' => ['nullable', 'string', 'max:1000'],
             'is_home_class' => ['required', 'boolean'],
+            'home_fee' => ['nullable', 'string', 'max:20'],
             'meeting_point' => ['nullable', 'string', 'max:255'],
+            'meeting_lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'meeting_lng' => ['nullable', 'numeric', 'between:-180,180'],
             'discount' => ['nullable', 'string', 'max:20'],
             'payment_method' => ['required', Rule::in(array_keys(Student::PAYMENT_METHODS))],
             'payment_plan' => ['required', Rule::in(array_keys(Student::PAYMENT_PLANS))],
@@ -177,12 +182,19 @@ class StudentController extends Controller
             'state' => $validated['state'],
             'zip' => $validated['zip'],
             'country' => $validated['country'],
+            'notes' => filled($validated['general_notes'] ?? null)
+                ? trim((string) $validated['general_notes'])
+                : null,
             'is_home_class' => $isHome,
             'meeting_point' => $isHome && filled($validated['meeting_point'] ?? null)
                 ? trim((string) $validated['meeting_point'])
                 : null,
-            'meeting_lat' => null,
-            'meeting_lng' => null,
+            'meeting_lat' => $isHome && isset($validated['meeting_lat'], $validated['meeting_lng'])
+                ? round((float) $validated['meeting_lat'], 7)
+                : null,
+            'meeting_lng' => $isHome && isset($validated['meeting_lat'], $validated['meeting_lng'])
+                ? round((float) $validated['meeting_lng'], 7)
+                : null,
             ...$payment,
         ];
     }
@@ -192,7 +204,11 @@ class StudentController extends Controller
      */
     private function paymentFields(Course $course, Request $request, bool $isHome, ?Student $student = null): array
     {
-        $subtotal = round((float) $course->cost + Student::homeClassFee($isHome), 2);
+        $courseCost = round((float) $course->cost, 2);
+        $homeFee = $isHome
+            ? DiscountInput::parseSurcharge($request->input('home_fee'), $courseCost)
+            : ['percent' => 0.0, 'amount' => 0.0];
+        $subtotal = round($courseCost + $homeFee['amount'], 2);
         $canDiscount = $request->user()?->can('students.discount') ?? false;
 
         if ($canDiscount) {
@@ -232,6 +248,8 @@ class StudentController extends Controller
         }
 
         return [
+            'home_fee_percent' => $homeFee['percent'],
+            'home_fee_amount' => $homeFee['amount'],
             'payment_subtotal' => $subtotal,
             'discount_percent' => $percent,
             'discount_amount' => $amount,

@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Expense;
 use App\Models\Reservas;
+use App\Models\StudentPayment;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -21,6 +23,14 @@ class DailyReportService
      *         canceladas: int,
      *         pendientes: int,
      *         confirmadas: int
+     *     },
+     *     sales: array{
+     *         total: float,
+     *         count: int
+     *     },
+     *     expenses: array{
+     *         total: float,
+     *         count: int
      *     },
      *     reservas: Collection<int, Reservas>
      * }
@@ -48,6 +58,8 @@ class DailyReportService
             ->orderBy('time')
             ->get();
 
+        $totals = $this->totalsForRange($fromString, $toString);
+
         return [
             'from' => $fromString,
             'to' => $toString,
@@ -61,6 +73,8 @@ class DailyReportService
                 'pendientes' => (int) ($byStatus['pendiente'] ?? 0),
                 'confirmadas' => (int) ($byStatus['confirmada'] ?? 0),
             ],
+            'sales' => $totals['sales'],
+            'expenses' => $totals['expenses'],
             'reservas' => $reservas,
         ];
     }
@@ -73,6 +87,8 @@ class DailyReportService
      *     is_today: bool,
      *     is_single_day: bool,
      *     counts: array{total: int, completadas: int, canceladas: int, pendientes: int, confirmadas: int},
+     *     sales: array{total: float, count: int},
+     *     expenses: array{total: float, count: int},
      *     reservas: Collection<int, Reservas>
      * }
      */
@@ -81,6 +97,36 @@ class DailyReportService
         $day = $date->copy()->startOfDay();
 
         return $this->forRange($day, $day);
+    }
+
+    /**
+     * @return array{
+     *     sales: array{total: float, count: int},
+     *     expenses: array{total: float, count: int}
+     * }
+     */
+    private function totalsForRange(string $from, string $to): array
+    {
+        $payments = StudentPayment::query()
+            ->whereDate('paid_at', '>=', $from)
+            ->whereDate('paid_at', '<=', $to)
+            ->get(['id', 'amount']);
+
+        $expenses = Expense::query()
+            ->whereDate('date', '>=', $from)
+            ->whereDate('date', '<=', $to)
+            ->get(['id', 'amount']);
+
+        return [
+            'sales' => [
+                'total' => round((float) $payments->sum('amount'), 2),
+                'count' => $payments->count(),
+            ],
+            'expenses' => [
+                'total' => round((float) $expenses->sum('amount'), 2),
+                'count' => $expenses->count(),
+            ],
+        ];
     }
 
     private function periodLabel(CarbonInterface $from, CarbonInterface $to, bool $isSingleDay): string

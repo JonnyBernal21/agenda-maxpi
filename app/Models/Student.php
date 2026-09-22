@@ -3,9 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasUppercasePersonFields;
-use App\Services\SettingService;
 use App\Support\DiscountInput;
-use App\Support\SchoolProfile;
 use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,8 +23,6 @@ class Student extends Authenticatable
     public const PAYMENT_TRANSFER = 'transferencia';
 
     public const PAYMENT_CARD = 'tarjeta';
-
-    public const HOME_CLASS_FEE = 100.00;
 
     /**
      * @var array<string, string>
@@ -51,6 +47,7 @@ class Student extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'created_by',
         'course_id',
         'institution_id',
         'name',
@@ -63,10 +60,13 @@ class Student extends Authenticatable
         'state',
         'zip',
         'country',
+        'notes',
         'is_home_class',
         'meeting_point',
         'meeting_lat',
         'meeting_lng',
+        'home_fee_percent',
+        'home_fee_amount',
         'payment_subtotal',
         'discount_percent',
         'discount_amount',
@@ -94,6 +94,8 @@ class Student extends Authenticatable
             'is_home_class' => 'boolean',
             'meeting_lat' => 'decimal:7',
             'meeting_lng' => 'decimal:7',
+            'home_fee_percent' => 'decimal:2',
+            'home_fee_amount' => 'decimal:2',
             'payment_subtotal' => 'decimal:2',
             'discount_percent' => 'decimal:2',
             'discount_amount' => 'decimal:2',
@@ -101,6 +103,11 @@ class Student extends Authenticatable
             'payment_plan' => 'integer',
             'payment_initial' => 'decimal:2',
         ];
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function course(): BelongsTo
@@ -202,6 +209,7 @@ class Student extends Authenticatable
             'amount' => $amount,
             'paid_at' => $paidAt ?? now()->toDateString(),
             'payment_method' => $this->payment_method,
+            'created_by' => auth()->id(),
         ]);
     }
 
@@ -217,6 +225,7 @@ class Student extends Authenticatable
             'amount' => $amount,
             'paid_at' => $paidAt ?? now()->toDateString(),
             'payment_method' => $paymentMethod ?: $this->payment_method,
+            'created_by' => auth()->id(),
         ]);
     }
 
@@ -287,17 +296,36 @@ class Student extends Authenticatable
         return '$'.number_format((float) $this->payment_total, 2);
     }
 
-    public static function homeClassFee(bool $isHomeClass): float
+    public function calendarHomeProps(): array
     {
-        if (! $isHomeClass) {
-            return 0.0;
+        $notes = filled($this->notes) ? (string) $this->notes : null;
+
+        if (! $this->is_home_class) {
+            return [
+                'isHomeClass' => false,
+                'meetingPoint' => null,
+                'meetingLat' => null,
+                'meetingLng' => null,
+                'notes' => $notes,
+            ];
         }
 
-        try {
-            return app(SettingService::class)->current()->homeClassFee();
-        } catch (\Throwable) {
-            return SchoolProfile::DEFAULT_HOME_CLASS_FEE;
+        return [
+            'isHomeClass' => true,
+            'meetingPoint' => filled($this->meeting_point) ? (string) $this->meeting_point : null,
+            'meetingLat' => $this->meeting_lat !== null ? (float) $this->meeting_lat : null,
+            'meetingLng' => $this->meeting_lng !== null ? (float) $this->meeting_lng : null,
+            'notes' => $notes,
+        ];
+    }
+
+    public function homeFeeInput(): string
+    {
+        if (! $this->is_home_class) {
+            return '';
         }
+
+        return DiscountInput::display((float) $this->home_fee_percent, (float) $this->home_fee_amount);
     }
 
     public function discountInput(): string

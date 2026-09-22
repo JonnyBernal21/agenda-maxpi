@@ -6,10 +6,12 @@ use App\Http\Controllers\Admin\CourseController as AdminCourseController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmailPreviewController;
 use App\Http\Controllers\Admin\ExpenseController as AdminExpenseController;
+use App\Http\Controllers\Admin\GeocodeController as AdminGeocodeController;
 use App\Http\Controllers\Admin\InstructorController as AdminInstructorController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\ReservaController as AdminReservaController;
 use App\Http\Controllers\Admin\RolePermissionController as AdminRolePermissionController;
+use App\Http\Controllers\Admin\SaleController as AdminSaleController;
 use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\StudentController as AdminStudentController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -68,11 +70,14 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::put('/admin/courses/{course}', [CourseController::class, 'update'])->name('admin.courses.update');
     Route::delete('/admin/courses/{course}', [CourseController::class, 'destroy'])->name('admin.courses.destroy');
 
+    Route::get('/admin/ventas', [AdminSaleController::class, 'index'])->name('admin.sales.index');
     Route::get('/admin/gastos', [AdminExpenseController::class, 'index'])->name('admin.expenses.index');
     Route::post('/admin/expenses', [ExpenseController::class, 'store'])->name('admin.expenses.store');
     Route::put('/admin/expenses/{expense}', [ExpenseController::class, 'update'])->name('admin.expenses.update');
     Route::delete('/admin/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('admin.expenses.destroy');
 
+    Route::get('/admin/geocode/search', [AdminGeocodeController::class, 'search'])->name('admin.geocode.search');
+    Route::get('/admin/geocode/reverse', [AdminGeocodeController::class, 'reverse'])->name('admin.geocode.reverse');
     Route::get('/admin/students/search', [StudentController::class, 'search'])->name('admin.students.search');
     Route::get('/admin/students/{student}/horarios', [StudentController::class, 'schedule'])->name('admin.students.schedule');
     Route::post('/admin/students', [StudentController::class, 'store'])->name('admin.students.store');

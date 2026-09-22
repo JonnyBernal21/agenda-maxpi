@@ -199,32 +199,6 @@
         </div>
     </div>
 
-    <hr class="my-4">
-    <p class="fw-semibold mb-3">Clases a domicilio</p>
-    <div class="row g-4">
-        <div class="col-md-6">
-            <label for="home_class_fee" class="form-label">Tarifa de clase a domicilio</label>
-            <div class="input-group @error('home_class_fee') has-validation @enderror">
-                <span class="input-group-text">$</span>
-                <input
-                    type="number"
-                    id="home_class_fee"
-                    name="home_class_fee"
-                    value="{{ old('home_class_fee', number_format($setting->homeClassFee(), 2, '.', '')) }}"
-                    class="form-control @error('home_class_fee') is-invalid @enderror"
-                    min="0"
-                    max="999999.99"
-                    step="0.01"
-                    required
-                >
-                @error('home_class_fee')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-            <p class="small text-muted mt-2 mb-0">Se suma al costo del curso al registrar un alumno con modalidad a domicilio.</p>
-        </div>
-    </div>
-
     <div class="d-flex justify-content-end mt-4">
         <button type="submit" class="btn btn-brand d-inline-flex align-items-center gap-2">
             <i class="bi bi-check-lg"></i>

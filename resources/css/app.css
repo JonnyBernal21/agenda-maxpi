@@ -1,6 +1,7 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import 'bootstrap-icons/font/bootstrap-icons.css';
 @import 'datatables.net-bs5/css/dataTables.bootstrap5.min.css';
+@import 'leaflet/dist/leaflet.css';
 
 :root {
     --brand-50: #f8fafc;
@@ -431,6 +432,52 @@ body {
     color: #64748b;
 }
 
+.kpi-card--sales {
+    border-left-color: #0d9488;
+}
+
+.kpi-card--sales .kpi-card__icon {
+    background: #ccfbf1;
+    color: #0f766e;
+}
+
+.kpi-card--expenses {
+    border-left-color: #ec4899;
+}
+
+.kpi-card--expenses .kpi-card__icon {
+    background: #fce7f3;
+    color: #be185d;
+}
+
+.kpi-card--full {
+    border-left-color: #16a34a;
+}
+
+.kpi-card--full .kpi-card__icon {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.kpi-card--abonos {
+    border-left-color: #f59e0b;
+}
+
+.kpi-card--abonos .kpi-card__icon {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.kpi-card__value--money {
+    font-size: 1.4rem;
+}
+
+.kpi-card__hint {
+    margin: 0.4rem 0 0;
+    font-size: 0.75rem;
+    color: var(--brand-500);
+}
+
 .table .badge--status-pendiente,
 .table .badge--status-confirmada,
 .table .badge--status-completada,
@@ -577,6 +624,50 @@ body {
     overflow: hidden;
 }
 
+.cal-month-event {
+    display: flex;
+    align-items: baseline;
+    gap: 0.28rem;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.cal-month-event__time {
+    flex: 0 0 auto;
+    font-size: 0.68rem;
+    font-weight: 700;
+    opacity: 0.92;
+    white-space: nowrap;
+}
+
+.cal-month-event__name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.cal-month-event__home {
+    flex: 0 0 auto;
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    opacity: 0.9;
+}
+
+.fc-dayGridMonth-view .fc-daygrid-event {
+    margin-top: 1px;
+    padding: 1px 4px;
+    border-radius: 0.35rem;
+}
+
+.fc-dayGridMonth-view .fc-event-main {
+    padding: 0;
+}
+
 .cal-slot {
     display: flex;
     flex-direction: column;
@@ -629,16 +720,102 @@ body {
     overflow-wrap: break-word;
 }
 
-.cal-slot--free .cal-slot__name {
-    font-weight: 500;
-    opacity: 0.92;
+.cal-slot--home,
+.cal-slot--note {
+    cursor: help;
+}
+
+.cal-home-note {
+    position: fixed;
+    z-index: 1080;
+    width: min(16.5rem, calc(100vw - 1.25rem));
+    padding: 0.65rem 0.75rem 0.7rem;
+    background: #fffbeb;
+    color: #422006;
+    border: 1px solid #f0d48a;
+    border-radius: 0.2rem;
+    box-shadow: 2px 3px 10px rgba(66, 32, 6, 0.18);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    pointer-events: none;
+}
+
+.cal-home-note::before {
+    content: '';
+    position: absolute;
+    top: 0.85rem;
+    left: -7px;
+    border-width: 7px 7px 7px 0;
+    border-style: solid;
+    border-color: transparent #f0d48a transparent transparent;
+}
+
+.cal-home-note::after {
+    content: '';
+    position: absolute;
+    top: 0.9rem;
+    left: -5px;
+    border-width: 6px 6px 6px 0;
+    border-style: solid;
+    border-color: transparent #fffbeb transparent transparent;
+}
+
+.cal-home-note--left::before {
+    left: auto;
+    right: -7px;
+    border-width: 7px 0 7px 7px;
+    border-color: transparent transparent transparent #f0d48a;
+}
+
+.cal-home-note--left::after {
+    left: auto;
+    right: -5px;
+    border-width: 6px 0 6px 6px;
+    border-color: transparent transparent transparent #fffbeb;
+}
+
+.cal-home-note__title {
+    margin: 0 0 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #92400e;
+}
+
+.cal-home-note__row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    margin-top: 0.4rem;
+}
+
+.cal-home-note__label {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #a16207;
+}
+
+.cal-home-note__value {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: #422006;
+}
+
+.cal-home-note__empty {
+    margin: 0;
+    color: #92400e;
+    opacity: 0.8;
 }
 
 .fc-event-cancelada {
     text-decoration: none;
 }
 
-.fc-event-cancelada .cal-slot__name {
+.fc-event-cancelada .cal-slot__name,
+.fc-event-cancelada .cal-month-event__name {
     text-decoration: line-through;
     opacity: 0.82;
 }
@@ -735,6 +912,12 @@ body {
 .fc-event-available:hover {
     filter: brightness(0.97);
     box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
+}
+
+.fc-dayGridMonth-view .fc-event-available,
+.fc-daygrid-day .fc-event-available,
+.fc-list-view .fc-event-available {
+    display: none !important;
 }
 
 #calendarAvailabilityAlert:not(.d-none) {
@@ -2360,9 +2543,45 @@ div.dataTables_wrapper .dataTables_filter label {
     line-height: 1.45;
 }
 
+.student-meeting-search {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    align-items: stretch;
+    margin-bottom: 0.7rem;
+}
+
+.student-meeting-search .assign-field {
+    flex: 1 1 auto;
+}
+
+.student-meeting-search .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.student-meeting-map {
+    height: 240px;
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid #dbe3ef;
+    overflow: hidden;
+    background: #eef4fb;
+}
+
+.student-meeting-map .leaflet-container {
+    height: 100%;
+    width: 100%;
+    font-family: inherit;
+}
+
 .assign-schedule-modal__footer {
     background: #eff6ff;
     border-top: 1px solid #dbeafe;
+}
+
+.student-modal-dialog {
+    max-width: 1160px;
 }
 
 .student-modal__header {
@@ -2426,6 +2645,49 @@ div.dataTables_wrapper .dataTables_filter label {
 
 .student-step--course {
     border-left-color: #2563eb;
+}
+
+.student-modal .assign-step {
+    margin-bottom: 0;
+}
+
+.student-step-arrow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0.55rem 0;
+    position: relative;
+}
+
+.student-step-arrow::before {
+    content: "";
+    position: absolute;
+    top: -0.55rem;
+    bottom: -0.55rem;
+    left: 50%;
+    width: 2px;
+    background: #99f6e4;
+    transform: translateX(-50%);
+}
+
+.student-step-arrow i {
+    position: relative;
+    z-index: 1;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border: 1px solid #5eead4;
+    box-shadow: 0 1px 4px rgba(15, 118, 110, 0.12);
+    font-size: 0.95rem;
+    color: #0d9488;
+}
+
+.student-step-arrow:has(+ .d-none) {
+    display: none;
 }
 
 .student-step--person {

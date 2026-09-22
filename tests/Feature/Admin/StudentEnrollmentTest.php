@@ -4,10 +4,8 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Course;
 use App\Models\Role;
-use App\Models\Setting;
 use App\Models\Student;
 use App\Models\User;
-use App\Services\SettingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -51,7 +49,7 @@ class StudentEnrollmentTest extends TestCase
         $this->assertSame(now()->toDateString(), $student->payments()->first()?->paid_at?->toDateString());
     }
 
-    public function test_home_class_adds_a_one_hundred_fee(): void
+    public function test_home_class_adds_the_entered_amount_fee(): void
     {
         $this->actingAs(User::factory()->create());
         $course = $this->makeCourse(3500);
@@ -59,6 +57,7 @@ class StudentEnrollmentTest extends TestCase
         $this->from(route('admin.students.index'))
             ->post(route('admin.students.store'), $this->payload($course, [
                 'is_home_class' => 1,
+                'home_fee' => '100',
             ]))
             ->assertRedirect(route('admin.students.index'))
             ->assertSessionDoesntHaveErrors();
@@ -66,6 +65,8 @@ class StudentEnrollmentTest extends TestCase
         $this->assertDatabaseHas('students', [
             'email' => 'ana.garcia@example.com',
             'is_home_class' => 1,
+            'home_fee_amount' => 100.00,
+            'home_fee_percent' => 2.86,
             'payment_subtotal' => 3600.00,
             'payment_total' => 3600.00,
         ]);
@@ -91,6 +92,47 @@ class StudentEnrollmentTest extends TestCase
         ]);
     }
 
+    public function test_home_class_can_store_a_map_meeting_point(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $course = $this->makeCourse(3500);
+
+        $this->from(route('admin.students.index'))
+            ->post(route('admin.students.store'), $this->payload($course, [
+                'is_home_class' => 1,
+                'meeting_lat' => 19.282608,
+                'meeting_lng' => -99.655701,
+            ]))
+            ->assertRedirect(route('admin.students.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $student = Student::query()->where('email', 'ana.garcia@example.com')->first();
+
+        $this->assertNotNull($student);
+        $this->assertEqualsWithDelta(19.282608, (float) $student->meeting_lat, 0.000001);
+        $this->assertEqualsWithDelta(-99.655701, (float) $student->meeting_lng, 0.000001);
+    }
+
+    public function test_school_class_can_store_general_notes(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $course = $this->makeCourse(3500);
+
+        $this->from(route('admin.students.index'))
+            ->post(route('admin.students.store'), $this->payload($course, [
+                'is_home_class' => 0,
+                'general_notes' => 'Prefiere clases por la mañana',
+            ]))
+            ->assertRedirect(route('admin.students.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertDatabaseHas('students', [
+            'email' => 'ana.garcia@example.com',
+            'is_home_class' => 0,
+            'notes' => 'Prefiere clases por la mañana',
+        ]);
+    }
+
     public function test_school_class_ignores_meeting_notes(): void
     {
         $this->actingAs(User::factory()->create());
@@ -100,6 +142,8 @@ class StudentEnrollmentTest extends TestCase
             ->post(route('admin.students.store'), $this->payload($course, [
                 'is_home_class' => 0,
                 'meeting_point' => 'No debería guardarse',
+                'meeting_lat' => 19.4326,
+                'meeting_lng' => -99.1332,
             ]))
             ->assertRedirect(route('admin.students.index'));
 
@@ -107,6 +151,8 @@ class StudentEnrollmentTest extends TestCase
             'email' => 'ana.garcia@example.com',
             'is_home_class' => 0,
             'meeting_point' => null,
+            'meeting_lat' => null,
+            'meeting_lng' => null,
         ]);
     }
 
@@ -118,6 +164,7 @@ class StudentEnrollmentTest extends TestCase
         $this->from(route('admin.students.index'))
             ->post(route('admin.students.store'), $this->payload($course, [
                 'is_home_class' => 1,
+                'home_fee' => '100',
                 'discount' => '%10',
             ]))
             ->assertRedirect(route('admin.students.index'));
@@ -125,6 +172,7 @@ class StudentEnrollmentTest extends TestCase
         $this->assertDatabaseHas('students', [
             'email' => 'ana.garcia@example.com',
             'is_home_class' => 1,
+            'home_fee_amount' => 100.00,
             'payment_subtotal' => 5300.00,
             'discount_percent' => 10.00,
             'discount_amount' => 530.00,
@@ -132,24 +180,25 @@ class StudentEnrollmentTest extends TestCase
         ]);
     }
 
-    public function test_home_class_uses_the_configured_fee(): void
+    public function test_home_class_percent_fee_applies_over_the_course_total(): void
     {
         $this->actingAs(User::factory()->create());
-        Setting::query()->first()?->update(['home_class_fee' => 250]);
-        app(SettingService::class)->forget();
         $course = $this->makeCourse(3500);
 
         $this->from(route('admin.students.index'))
             ->post(route('admin.students.store'), $this->payload($course, [
                 'is_home_class' => 1,
+                'home_fee' => '%10',
             ]))
             ->assertRedirect(route('admin.students.index'));
 
         $this->assertDatabaseHas('students', [
             'email' => 'ana.garcia@example.com',
             'is_home_class' => 1,
-            'payment_subtotal' => 3750.00,
-            'payment_total' => 3750.00,
+            'home_fee_percent' => 10.00,
+            'home_fee_amount' => 350.00,
+            'payment_subtotal' => 3850.00,
+            'payment_total' => 3850.00,
         ]);
     }
 
@@ -246,14 +295,18 @@ class StudentEnrollmentTest extends TestCase
             'name' => 'Ana',
             'last_name' => 'García',
             'is_home_class' => true,
+            'home_fee_amount' => 100,
+            'home_fee_percent' => 2.86,
             'meeting_point' => 'Esquina del parque, auto blanco',
         ]);
 
         $this->get(route('admin.students.index'))
             ->assertOk()
             ->assertSee('A domicilio')
+            ->assertSee('Tarifa envío')
             ->assertSee('Esquina del parque, auto blanco')
             ->assertSee('data-is-home-class="1"', false)
+            ->assertSee('data-home-fee="100.00"', false)
             ->assertSee('data-meeting-point="Esquina del parque, auto blanco"', false);
     }
 

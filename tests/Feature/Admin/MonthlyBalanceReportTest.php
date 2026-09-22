@@ -50,6 +50,45 @@ class MonthlyBalanceReportTest extends TestCase
             ->assertSee('id="monthlyBalanceChart"', false);
     }
 
+    public function test_reports_page_shows_daily_sales_kpis_before_the_monthly_chart(): void
+    {
+        $this->travelTo('2026-09-21 10:00:00');
+        $this->actingAs(User::factory()->create());
+        $student = Student::factory()->create([
+            'course_id' => Course::factory()->create()->id,
+        ]);
+
+        StudentPayment::factory()->create([
+            'student_id' => $student->id,
+            'amount' => 1500,
+            'paid_at' => '2026-09-21',
+        ]);
+        StudentPayment::factory()->create([
+            'student_id' => $student->id,
+            'amount' => 375,
+            'paid_at' => '2026-09-21',
+        ]);
+        Expense::factory()->create([
+            'amount' => 420,
+            'date' => '2026-09-21',
+            'concept' => 'Carga de gasolina',
+        ]);
+
+        $this->get(route('admin.reports.index'))
+            ->assertOk()
+            ->assertSeeInOrder([
+                'Ventas del día',
+                '$1,875.00',
+                'Gastos del día',
+                '$420.00',
+                'Total del día',
+                'Clases del día',
+                'Reporte de ventas y gastos por mes',
+            ])
+            ->assertDontSee('Pagos al registrar')
+            ->assertDontSee('>Abonos</p>', false);
+    }
+
     public function test_income_comes_from_each_student_payment_in_the_selected_year(): void
     {
         $this->actingAs(User::factory()->create());

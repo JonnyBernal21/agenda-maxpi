@@ -90,6 +90,9 @@ class CalendarEventsTest extends TestCase
             'name' => 'Perla Monserrath',
             'last_name' => 'Gutierrez Flores',
             'is_home_class' => true,
+            'meeting_point' => 'Portón negro, tocar el timbre 3',
+            'meeting_lat' => 19.282608,
+            'meeting_lng' => -99.655701,
         ]);
         $instructor = Instructor::factory()->create();
         $vehicle = Vehicle::factory()->create([
@@ -107,11 +110,91 @@ class CalendarEventsTest extends TestCase
         $event = collect($response->json())->firstWhere('id', $reserva->id);
 
         $this->assertTrue($event['extendedProps']['isHomeClass']);
+        $this->assertSame('Portón negro, tocar el timbre 3', $event['extendedProps']['meetingPoint']);
+        $this->assertEqualsWithDelta(19.282608, (float) $event['extendedProps']['meetingLat'], 0.000001);
+        $this->assertEqualsWithDelta(-99.655701, (float) $event['extendedProps']['meetingLng'], 0.000001);
         $this->assertSame(
             ReservaCalendarLabels::bookedEventTitle($student->fresh()->fullName(), 1, false, true),
             $event['title']
         );
         $this->assertStringContainsString('A domicilio', $event['title']);
+    }
+
+    public function test_school_class_events_include_general_notes(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $student = Student::factory()->create([
+            'is_home_class' => false,
+            'notes' => 'Prefiere clases por la mañana',
+        ]);
+        $instructor = Instructor::factory()->create();
+        $vehicle = Vehicle::factory()->create([
+            'type' => 'manual',
+            'status' => 'disponible',
+        ]);
+
+        $reserva = $this->book($student, $instructor, $vehicle, '2026-09-02', '15:00');
+
+        $event = collect($this->getJson(route('admin.calendar.events', [
+            'start' => '2026-09-01',
+            'end' => '2026-09-08',
+        ]))->json())->firstWhere('id', $reserva->id);
+
+        $this->assertFalse($event['extendedProps']['isHomeClass']);
+        $this->assertSame('Prefiere clases por la mañana', $event['extendedProps']['notes']);
+        $this->assertNull($event['extendedProps']['meetingPoint']);
+    }
+
+    public function test_month_and_list_views_omit_available_slots(): void
+    {
+        $this->actingAs(User::factory()->create());
+        Instructor::factory()->create();
+        Vehicle::factory()->create(['status' => 'disponible']);
+
+        $week = collect($this->getJson(route('admin.calendar.events', [
+            'start' => '2026-10-05',
+            'end' => '2026-10-06',
+            'view' => 'rollingWeek',
+        ]))->json());
+
+        $month = collect($this->getJson(route('admin.calendar.events', [
+            'start' => '2026-10-05',
+            'end' => '2026-10-06',
+            'view' => 'dayGridMonth',
+        ]))->json());
+
+        $this->assertTrue($week->contains(fn ($event) => ($event['extendedProps']['isAvailable'] ?? false) === true));
+        $this->assertFalse($month->contains(fn ($event) => ($event['extendedProps']['isAvailable'] ?? false) === true));
+        $this->assertFalse(collect($this->getJson(route('admin.calendar.events', [
+            'start' => '2026-10-05',
+            'end' => '2026-10-06',
+            'view' => 'rollingListWeek',
+        ]))->json())->contains(fn ($event) => ($event['extendedProps']['isAvailable'] ?? false) === true));
+    }
+
+    public function test_month_view_still_returns_booked_classes(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $student = Student::factory()->create([
+            'name' => 'Roberto Carlos',
+            'last_name' => 'Valdez Gonzalez',
+        ]);
+        $instructor = Instructor::factory()->create();
+        $vehicle = Vehicle::factory()->create([
+            'type' => 'manual',
+            'status' => 'disponible',
+        ]);
+
+        $reserva = $this->book($student, $instructor, $vehicle, '2026-10-05', '09:00');
+
+        $month = collect($this->getJson(route('admin.calendar.events', [
+            'start' => '2026-10-01',
+            'end' => '2026-11-01',
+            'view' => 'dayGridMonth',
+        ]))->json());
+
+        $this->assertTrue($month->contains(fn ($event) => (int) $event['id'] === (int) $reserva->id));
+        $this->assertFalse($month->contains(fn ($event) => ($event['extendedProps']['isAvailable'] ?? false) === true));
     }
 
     private function book(

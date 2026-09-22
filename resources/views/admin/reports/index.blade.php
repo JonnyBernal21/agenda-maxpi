@@ -18,7 +18,7 @@
             id="reportRangeForm"
             method="GET"
             action="{{ route('admin.reports.index') }}"
-            class="report-range d-flex flex-wrap align-items-end gap-2"
+            class="report-range js-date-range d-flex flex-wrap align-items-end gap-2"
         >
             <input type="hidden" name="year" value="{{ $balance['year'] }}">
             <div>
@@ -30,8 +30,8 @@
                     <input
                         type="text"
                         id="report_range"
-                        class="form-control form-control-sm"
-                        value="{{ $from === $to ? \Illuminate\Support\Carbon::parse($from)->format('d/m/Y') : \Illuminate\Support\Carbon::parse($from)->format('d/m/Y').' – '.\Illuminate\Support\Carbon::parse($to)->format('d/m/Y') }}"
+                        class="form-control form-control-sm js-date-range-display"
+                        value="{{ $from === $to ? \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $from)->format('d/m/Y') : \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $from)->format('d/m/Y').' – '.\Illuminate\Support\Carbon::createFromFormat('Y-m-d', $to)->format('d/m/Y') }}"
                         placeholder="Selecciona un rango"
                         autocomplete="off"
                         readonly
@@ -44,7 +44,24 @@
         </form>
     </div>
 
-    @include('admin.partials.monthly-balance-report')
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="kpi-card kpi-card--sales">
+                <div class="kpi-card__icon"><i class="bi bi-cash-stack"></i></div>
+                <p class="kpi-card__label">{{ $report['is_single_day'] ? 'Ventas del día' : 'Ventas del periodo' }}</p>
+                <p class="kpi-card__value kpi-card__value--money">{{ '$'.number_format($report['sales']['total'], 2) }}</p>
+                <p class="kpi-card__hint">{{ $report['sales']['count'] }} {{ $report['sales']['count'] === 1 ? 'movimiento' : 'movimientos' }}</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="kpi-card kpi-card--expenses">
+                <div class="kpi-card__icon"><i class="bi bi-receipt"></i></div>
+                <p class="kpi-card__label">{{ $report['is_single_day'] ? 'Gastos del día' : 'Gastos del periodo' }}</p>
+                <p class="kpi-card__value kpi-card__value--money">{{ '$'.number_format($report['expenses']['total'], 2) }}</p>
+                <p class="kpi-card__hint">{{ $report['expenses']['count'] }} {{ $report['expenses']['count'] === 1 ? 'gasto' : 'gastos' }}</p>
+            </div>
+        </div>
+    </div>
 
     <div class="row g-3 mb-4">
         <div class="col-6 col-lg-4 col-xl">
@@ -93,6 +110,8 @@
             'showDate' => ! $report['is_single_day'],
         ])->render(),
     ])
+
+    @include('admin.partials.monthly-balance-report')
 @endsection
 
 @push('scripts')

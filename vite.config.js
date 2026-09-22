@@ -12,6 +12,7 @@ export default defineConfig({
                 'resources/js/admin-reservas.js',
                 'resources/js/admin-datatables.js',
                 'resources/js/admin-reports.js',
+                'resources/js/admin-sales.js',
                 'resources/js/instructor-calendar.js',
             ],
             refresh: true,

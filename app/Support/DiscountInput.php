@@ -39,6 +39,41 @@ final class DiscountInput
         return ['percent' => $percent, 'amount' => $amount];
     }
 
+    /**
+     * @return array{percent: float, amount: float}
+     */
+    public static function parseSurcharge(?string $raw, float $base): array
+    {
+        $text = strtoupper(trim((string) $raw));
+        $text = str_replace(['$', ' '], '', $text);
+        $text = str_replace(',', '.', $text);
+
+        if ($text === '' || $text === '0' || $text === '0.00' || $text === '%0' || $text === '0%') {
+            return ['percent' => 0.0, 'amount' => 0.0];
+        }
+
+        $isPercent = str_contains($text, '%');
+        $number = (float) str_replace('%', '', $text);
+
+        if (! is_finite($number) || $number < 0) {
+            return ['percent' => 0.0, 'amount' => 0.0];
+        }
+
+        $base = max(0, round($base, 2));
+
+        if ($isPercent) {
+            $percent = round(min(100, $number), 2);
+            $amount = round($base * ($percent / 100), 2);
+
+            return ['percent' => $percent, 'amount' => $amount];
+        }
+
+        $amount = round($number, 2);
+        $percent = $base > 0 ? round(($amount / $base) * 100, 2) : 0.0;
+
+        return ['percent' => $percent, 'amount' => $amount];
+    }
+
     public static function display(float $percent, float $amount): string
     {
         if ($percent > 0 && abs($percent - round($percent)) < 0.001) {

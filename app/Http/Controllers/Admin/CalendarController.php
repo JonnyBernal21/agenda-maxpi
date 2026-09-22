@@ -73,6 +73,13 @@ class CalendarController extends Controller
                         'vehicle' => $vehicleLabel,
                         'classNumber' => $classNumber,
                         'isHomeClass' => $isHomeClass,
+                        ...($reserva->student?->calendarHomeProps() ?? [
+                            'isHomeClass' => false,
+                            'meetingPoint' => null,
+                            'meetingLat' => null,
+                            'meetingLng' => null,
+                            'notes' => null,
+                        ]),
                         'status' => $reserva->status,
                         'date' => $reserva->date,
                         'time' => $reserva->time,
@@ -83,39 +90,52 @@ class CalendarController extends Controller
                 ];
             });
 
-        $availableEvents = collect($this->slots->availableSlotsForRange($start, $end))
-            ->map(function (array $slot) {
-                $colors = ReservaCalendarColors::forAvailable();
-                $startAt = "{$slot['date']} {$slot['time']}:00";
-                $endAt = date('Y-m-d H:i:s', strtotime($startAt.' +'.Reservas::CLASS_DURATION_MINUTES.' minutes'));
+        $availableEvents = $this->includesAvailableSlots($request)
+            ? collect($this->slots->availableSlotsForRange($start, $end))
+                ->map(function (array $slot) {
+                    $colors = ReservaCalendarColors::forAvailable();
+                    $startAt = "{$slot['date']} {$slot['time']}:00";
+                    $endAt = date('Y-m-d H:i:s', strtotime($startAt.' +'.Reservas::CLASS_DURATION_MINUTES.' minutes'));
 
-                return [
-                    'id' => "available-{$slot['date']}-{$slot['time']}",
-                    'title' => ReservaCalendarLabels::availableEventTitle(
-                        ReservaCalendarLabels::cuposEnHorario($slot['free_instructors'], $slot['free_vehicles']),
-                        $slot['time']
-                    ),
-                    'start' => $startAt,
-                    'end' => $endAt,
-                    'backgroundColor' => $colors['background'],
-                    'borderColor' => $colors['border'],
-                    'textColor' => $colors['text'],
-                    'editable' => false,
-                    'startEditable' => false,
-                    'durationEditable' => false,
-                    'classNames' => [$colors['class']],
-                    'extendedProps' => [
-                        'isAvailable' => true,
-                        'date' => $slot['date'],
-                        'time' => $slot['time'],
-                        'endTime' => date('H:i', strtotime($endAt)),
-                        'cupos' => $slot['cupos'],
-                        'freeInstructors' => $slot['free_instructors'],
-                        'freeVehicles' => $slot['free_vehicles'],
-                    ],
-                ];
-            });
+                    return [
+                        'id' => "available-{$slot['date']}-{$slot['time']}",
+                        'title' => ReservaCalendarLabels::availableEventTitle(
+                            ReservaCalendarLabels::cuposEnHorario($slot['free_instructors'], $slot['free_vehicles']),
+                            $slot['time']
+                        ),
+                        'start' => $startAt,
+                        'end' => $endAt,
+                        'backgroundColor' => $colors['background'],
+                        'borderColor' => $colors['border'],
+                        'textColor' => $colors['text'],
+                        'editable' => false,
+                        'startEditable' => false,
+                        'durationEditable' => false,
+                        'classNames' => [$colors['class']],
+                        'extendedProps' => [
+                            'isAvailable' => true,
+                            'date' => $slot['date'],
+                            'time' => $slot['time'],
+                            'endTime' => date('H:i', strtotime($endAt)),
+                            'cupos' => $slot['cupos'],
+                            'freeInstructors' => $slot['free_instructors'],
+                            'freeVehicles' => $slot['free_vehicles'],
+                        ],
+                    ];
+                })
+            : collect();
 
         return response()->json($reservationEvents->concat($availableEvents)->values());
+    }
+
+    private function includesAvailableSlots(Request $request): bool
+    {
+        $view = strtolower((string) $request->query('view', ''));
+
+        if ($view === '') {
+            return true;
+        }
+
+        return ! str_contains($view, 'daygrid') && ! str_contains($view, 'list');
     }
 }

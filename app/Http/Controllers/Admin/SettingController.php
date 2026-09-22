@@ -45,7 +45,6 @@ class SettingController extends Controller
             'zip' => ['nullable', 'string', 'max:20'],
             'country' => ['nullable', 'string', 'max:120'],
             'currency' => ['required', 'string', Rule::in(array_keys(SchoolProfile::CURRENCIES))],
-            'home_class_fee' => ['required', 'numeric', 'min:0', 'max:999999.99'],
         ]);
 
         $setting = Setting::query()->first() ?? new Setting();
@@ -72,7 +71,6 @@ class SettingController extends Controller
         $setting->zip = $validated['zip'] ?? null;
         $setting->country = $validated['country'] ?? SchoolProfile::DEFAULT_COUNTRY;
         $setting->currency = $validated['currency'];
-        $setting->home_class_fee = round((float) $validated['home_class_fee'], 2);
         $setting->save();
 
         $this->settings->forget();

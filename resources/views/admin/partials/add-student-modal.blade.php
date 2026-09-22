@@ -1,5 +1,4 @@
 @php
-    $homeClassFeeLabel = number_format($appSetting?->homeClassFee() ?? \App\Support\SchoolProfile::DEFAULT_HOME_CLASS_FEE, 2);
     $canDiscount = auth()->user()?->can('students.discount');
 @endphp
 
@@ -14,9 +13,13 @@
     data-editing-id="{{ old('_form') === 'student-edit' ? old('editing_id') : '' }}"
     data-auto-open="{{ ($errors->any() && in_array(old('_form'), ['student', 'student-edit'], true)) ? 'true' : 'false' }}"
     data-old-extras='@json(old('extra_classes', []))'
-    data-home-class-fee="{{ $appSetting?->homeClassFee() ?? \App\Support\SchoolProfile::DEFAULT_HOME_CLASS_FEE }}"
+    data-geocode-url="{{ route('admin.geocode.search') }}"
+    data-reverse-url="{{ route('admin.geocode.reverse') }}"
+    data-map-lat="19.4326"
+    data-map-lng="-99.1332"
+    data-map-query="{{ collect([$appSetting?->city, $appSetting?->state, $appSetting?->countryName()])->filter()->implode(', ') }}"
 >
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl student-modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content student-modal modal-content--stack">
             <form method="POST" action="{{ route('admin.students.store') }}" class="modal-form-layout" id="studentAdminForm">
                 @csrf
@@ -101,18 +104,98 @@
                                 @error('is_home_class')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
-                                <p class="small text-muted mt-2 mb-0">A domicilio suma ${{ $homeClassFeeLabel }} al costo del curso.</p>
                             </div>
 
-                            <div class="col-12 {{ (string) old('is_home_class') === '1' ? '' : 'd-none' }}" id="studentHomeNotesWrap">
-                                <label for="student_meeting_point" class="form-label">Notas</label>
+                            <div class="col-12 {{ (string) old('is_home_class') === '1' ? '' : 'd-none' }}" id="studentHomeClassWrap">
+                                <label for="student_home_fee" class="form-label">Tarifa de envío</label>
+                                <div class="assign-field">
+                                    <i class="bi bi-cash-coin assign-field__icon"></i>
+                                    <input
+                                        type="text"
+                                        id="student_home_fee"
+                                        name="home_fee"
+                                        value="{{ old('home_fee') }}"
+                                        class="form-control @error('home_fee') is-invalid @enderror"
+                                        placeholder="%10 o 100.00"
+                                        inputmode="decimal"
+                                        autocomplete="off"
+                                        @disabled((string) old('is_home_class') !== '1')
+                                    >
+                                </div>
+                                @error('home_fee')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                                <p class="small text-muted mt-2 mb-3" id="studentHomeFeeHint">
+                                    Escribe un monto para sumarlo al total, o un porcentaje (ej. %10) para aplicarlo sobre el costo del curso.
+                                </p>
+
+                                <label class="form-label" for="student_meeting_search">Punto de encuentro</label>
+                                <div class="student-meeting-search">
+                                    <div class="assign-field">
+                                        <i class="bi bi-search assign-field__icon"></i>
+                                        <input
+                                            type="text"
+                                            id="student_meeting_search"
+                                            class="form-control"
+                                            placeholder="Buscar una dirección"
+                                            autocomplete="off"
+                                        >
+                                    </div>
+                                    <button type="button" class="btn btn-brand" id="studentMeetingSearchBtn">
+                                        Buscar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-brand-outline"
+                                        id="studentMeetingLocateBtn"
+                                        title="Usar mi ubicación actual"
+                                    >
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                        Mi ubicación
+                                    </button>
+                                </div>
+                                <div id="studentMeetingMap" class="student-meeting-map" role="application" aria-label="Mapa para elegir el punto de encuentro"></div>
+                                <p class="small text-muted mt-2 mb-1" id="studentMeetingHint">
+                                    Usamos tu ubicación actual. También puedes buscar, hacer clic o arrastrar el pin.
+                                </p>
+                                <a
+                                    id="studentMeetingGoogleLink"
+                                    class="small {{ old('meeting_lat') && old('meeting_lng') ? '' : 'd-none' }}"
+                                    href="{{ old('meeting_lat') && old('meeting_lng') ? 'https://www.google.com/maps?q='.old('meeting_lat').','.old('meeting_lng') : '#' }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Ver en Google Maps
+                                </a>
+                                <input
+                                    type="hidden"
+                                    id="student_meeting_lat"
+                                    name="meeting_lat"
+                                    value="{{ old('meeting_lat') }}"
+                                    @disabled((string) old('is_home_class') !== '1')
+                                >
+                                <input
+                                    type="hidden"
+                                    id="student_meeting_lng"
+                                    name="meeting_lng"
+                                    value="{{ old('meeting_lng') }}"
+                                    @disabled((string) old('is_home_class') !== '1')
+                                >
+                                @error('meeting_lat')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                                @error('meeting_lng')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+
+                                <label for="student_meeting_point" class="form-label mt-3">Notas</label>
                                 <div class="assign-field assign-field--textarea">
                                     <i class="bi bi-chat-left-text assign-field__icon"></i>
                                     <textarea
                                         id="student_meeting_point"
                                         name="meeting_point"
                                         class="form-control @error('meeting_point') is-invalid @enderror"
-                                        placeholder="Punto de encuentro o indicaciones"
+                                        placeholder="Indicaciones extra: portón, timbre, referencias..."
                                         maxlength="255"
                                         rows="3"
                                         @disabled((string) old('is_home_class') !== '1')
@@ -121,10 +204,11 @@
                                 @error('meeting_point')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
-                                <p class="small text-muted mt-2 mb-0">Cómo llegar, punto de encuentro o indicaciones para la clase.</p>
                             </div>
                         </div>
                     </section>
+
+                    <div class="student-step-arrow" aria-hidden="true"><i class="bi bi-chevron-down"></i></div>
 
                     <section class="assign-step student-step--person">
                         <header class="assign-step__head">
@@ -212,8 +296,28 @@
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
+
+                            <div class="col-12">
+                                <label for="student_general_notes" class="form-label">Notas</label>
+                                <div class="assign-field assign-field--textarea">
+                                    <i class="bi bi-sticky assign-field__icon"></i>
+                                    <textarea
+                                        id="student_general_notes"
+                                        name="general_notes"
+                                        class="form-control @error('general_notes') is-invalid @enderror"
+                                        placeholder="Observaciones del alumno (se muestran al pasar el cursor sobre su clase)"
+                                        maxlength="1000"
+                                        rows="3"
+                                    >{{ old('general_notes') }}</textarea>
+                                </div>
+                                @error('general_notes')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
                     </section>
+
+                    <div class="student-step-arrow" aria-hidden="true"><i class="bi bi-chevron-down"></i></div>
 
                     <section class="assign-step student-step--address">
                         <header class="assign-step__head">
@@ -312,6 +416,8 @@
                         </div>
                     </section>
 
+                    <div class="student-step-arrow" aria-hidden="true"><i class="bi bi-chevron-down"></i></div>
+
                     <section class="assign-step student-step--pay">
                         <header class="assign-step__head">
                             <span class="assign-step__num">4</span>
@@ -319,9 +425,9 @@
                                 <h3 class="assign-step__title">Pago del curso</h3>
                                 <p class="assign-step__help">
                                     @can('students.discount')
-                                        El subtotal sale del curso. En descuento puedes escribir <strong>%15</strong> o <strong>15.00</strong>.
+                                        El subtotal sale del curso y, si es a domicilio, de la tarifa de envío. En descuento puedes escribir <strong>%15</strong> o <strong>15.00</strong>.
                                     @else
-                                        El subtotal sale del curso.
+                                        El subtotal sale del curso y, si es a domicilio, de la tarifa de envío.
                                     @endcan
                                 </p>
                             </div>
@@ -431,6 +537,8 @@
                             </div>
                         </div>
                     </section>
+
+                    <div class="student-step-arrow" aria-hidden="true"><i class="bi bi-chevron-down"></i></div>
 
                     <section
                         class="assign-step student-step--extras d-none"

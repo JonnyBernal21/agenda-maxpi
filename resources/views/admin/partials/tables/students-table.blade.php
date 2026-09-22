@@ -65,10 +65,30 @@
                                         <dt>Domicilio</dt>
                                         <dd>{{ $addressParts !== '' ? $addressParts : '—' }}</dd>
                                     </div>
-                                    @if ($student->is_home_class && filled($student->meeting_point))
+                                    @if (filled($student->notes))
                                         <div class="student-details__row">
                                             <dt>Notas</dt>
+                                            <dd>{{ $student->notes }}</dd>
+                                        </div>
+                                    @endif
+                                    @if ($student->is_home_class && filled($student->meeting_point))
+                                        <div class="student-details__row">
+                                            <dt>Indicaciones</dt>
                                             <dd>{{ $student->meeting_point }}</dd>
+                                        </div>
+                                    @endif
+                                    @if ($student->is_home_class && $student->meeting_lat && $student->meeting_lng)
+                                        <div class="student-details__row">
+                                            <dt>Encuentro</dt>
+                                            <dd>
+                                                <a
+                                                    href="https://www.google.com/maps?q={{ $student->meeting_lat }},{{ $student->meeting_lng }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    Ver en mapa
+                                                </a>
+                                            </dd>
                                         </div>
                                     @endif
                                 </dl>
@@ -84,6 +104,12 @@
                                         <dt>Modalidad</dt>
                                         <dd>{{ $student->is_home_class ? 'A domicilio' : 'En escuela' }}</dd>
                                     </div>
+                                    @if ($student->is_home_class && (float) $student->home_fee_amount > 0)
+                                        <div class="student-details__row">
+                                            <dt>Tarifa envío</dt>
+                                            <dd>{{ $student->homeFeeInput() }} · ${{ number_format((float) $student->home_fee_amount, 2) }}</dd>
+                                        </div>
+                                    @endif
                                     <div class="student-details__row">
                                         <dt>Primera clase</dt>
                                         <dd>{{ $firstClass ? $firstClass['date'].' · '.$firstClass['time'] : 'Sin asignar' }}</dd>
@@ -259,7 +285,11 @@
                             data-course-classes="{{ $student->course?->num_classes ?? 0 }}"
                             data-extra-classes='@json($extraClassesForForm)'
                             data-is-home-class="{{ $student->is_home_class ? '1' : '0' }}"
+                            data-home-fee="{{ $student->homeFeeInput() }}"
                             data-meeting-point="{{ $student->meeting_point }}"
+                            data-general-notes="{{ $student->notes }}"
+                            data-meeting-lat="{{ $student->meeting_lat }}"
+                            data-meeting-lng="{{ $student->meeting_lng }}"
                             data-discount="{{ $student->discountInput() }}"
                             data-payment-method="{{ $student->payment_method }}"
                             data-payment-plan="{{ $student->payment_plan }}"

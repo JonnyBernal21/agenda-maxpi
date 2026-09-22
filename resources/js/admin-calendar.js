@@ -7,7 +7,7 @@ import bootstrap5Plugin from '@fullcalendar/bootstrap5';
 import esLocale from '@fullcalendar/core/locales/es';
 import * as bootstrap from 'bootstrap';
 import { rollingWeekToolbar, rollingWeekViews } from './calendar-rolling-week';
-import { calendarEventContent } from './calendar-event-content';
+import { calendarEventContent, homeClassNoteHandlers } from './calendar-event-content';
 import { confirmCancelClass, showBookingError } from './booking-confirm';
 
 const statusLabels = {
@@ -301,15 +301,42 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     };
 
-    const calendar = new Calendar(calendarEl, {
+    const eventsUrl = calendarEl.dataset.eventsUrl;
+    let calendar;
+
+    calendar = new Calendar(calendarEl, {
         plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin, bootstrap5Plugin],
         themeSystem: 'bootstrap5',
         locale: esLocale,
-        views: rollingWeekViews,
+        views: {
+            ...rollingWeekViews,
+            dayGridMonth: {
+                dayMaxEvents: 5,
+            },
+        },
         initialView: 'rollingWeek',
         initialDate: new Date(),
         headerToolbar: rollingWeekToolbar,
-        events: calendarEl.dataset.eventsUrl,
+        events(info, successCallback, failureCallback) {
+            const url = new URL(eventsUrl, window.location.href);
+            url.searchParams.set('start', info.startStr);
+            url.searchParams.set('end', info.endStr);
+            url.searchParams.set('view', calendar?.view?.type || '');
+
+            fetch(url.toString(), {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('No se pudieron cargar los eventos');
+                    }
+
+                    return response.json();
+                })
+                .then(successCallback)
+                .catch(failureCallback);
+        },
         height: 'auto',
         nowIndicator: true,
         allDaySlot: false,
@@ -329,6 +356,8 @@ document.addEventListener('DOMContentLoaded', () => {
             hour12: false,
         },
         eventContent: calendarEventContent,
+        eventMouseEnter: homeClassNoteHandlers.eventMouseEnter,
+        eventMouseLeave: homeClassNoteHandlers.eventMouseLeave,
         editable: true,
         eventStartEditable: true,
         eventDurationEditable: false,
@@ -443,6 +472,13 @@ document.addEventListener('DOMContentLoaded', () => {
         eventsSet() {
             if (skipNextHintReset) {
                 skipNextHintReset = false;
+                return;
+            }
+
+            const view = String(calendar.view?.type || '');
+
+            if (view.includes('dayGrid') || view.includes('list')) {
+                resetHint();
                 return;
             }
 

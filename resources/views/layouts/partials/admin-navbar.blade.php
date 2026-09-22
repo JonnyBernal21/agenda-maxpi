@@ -73,9 +73,17 @@
                         </a>
                     </li>
                 @endcan
-                @if (auth()->user()?->can('expenses.manage') || auth()->user()?->can('reports.view'))
+                @if (auth()->user()?->can('sales.view') || auth()->user()?->can('expenses.manage') || auth()->user()?->can('reports.view'))
                     <li class="nav-item admin-navbar__split" aria-hidden="true"></li>
                 @endif
+                @can('sales.view')
+                    <li class="nav-item">
+                        <a class="nav-link @if(request()->routeIs('admin.sales.*')) active @endif" href="{{ route('admin.sales.index') }}">
+                            <i class="bi bi-cash-stack"></i>
+                            <span>Ventas</span>
+                        </a>
+                    </li>
+                @endcan
                 @can('expenses.manage')
                     <li class="nav-item">
                         <a class="nav-link @if(request()->routeIs('admin.expenses.*')) active @endif" href="{{ route('admin.expenses.index') }}">
