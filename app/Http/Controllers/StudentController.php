@@ -8,10 +8,12 @@ use App\Models\Student;
 use App\Models\StudentExtraClass;
 use App\Services\StudentMailService;
 use App\Support\DiscountInput;
+use App\Support\PaymentHistoryPayload;
 use App\Support\ReservaStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
@@ -151,6 +153,7 @@ class StudentController extends Controller
             'general_notes' => ['nullable', 'string', 'max:1000'],
             'is_home_class' => ['required', 'boolean'],
             'home_fee' => ['nullable', 'string', 'max:20'],
+            'home_fee_mode' => ['nullable', Rule::in(array_keys(Student::HOME_FEE_MODES))],
             'meeting_point' => ['nullable', 'string', 'max:255'],
             'meeting_lat' => ['nullable', 'numeric', 'between:-90,90'],
             'meeting_lng' => ['nullable', 'numeric', 'between:-180,180'],
@@ -208,7 +211,18 @@ class StudentController extends Controller
         $homeFee = $isHome
             ? DiscountInput::parseSurcharge($request->input('home_fee'), $courseCost)
             : ['percent' => 0.0, 'amount' => 0.0];
-        $subtotal = round($courseCost + $homeFee['amount'], 2);
+        $homeFeeMode = $isHome
+            ? (string) $request->input('home_fee_mode', Student::HOME_FEE_MODE_TOTAL)
+            : Student::HOME_FEE_MODE_TOTAL;
+
+        if (! array_key_exists($homeFeeMode, Student::HOME_FEE_MODES)) {
+            $homeFeeMode = Student::HOME_FEE_MODE_TOTAL;
+        }
+
+        $plan = (int) $request->input('payment_plan');
+        $homeFeeTimes = Student::homeFeeMultiplier($homeFeeMode, $plan, (int) $course->num_classes);
+        $homeFeeApplied = round((float) $homeFee['amount'] * $homeFeeTimes, 2);
+        $subtotal = round($courseCost + $homeFeeApplied, 2);
         $canDiscount = $request->user()?->can('students.discount') ?? false;
 
         if ($canDiscount) {
@@ -224,10 +238,11 @@ class StudentController extends Controller
         }
 
         $total = round(max(0, $subtotal - $amount), 2);
-        $plan = (int) $request->input('payment_plan');
         $initial = 0.0;
 
-        if ($plan > 1) {
+        if ($plan === Student::PAYMENT_PLAN_SINGLE && $homeFeeMode === Student::HOME_FEE_MODE_PER_PAYMENT && $homeFeeApplied > 0) {
+            $initial = round(max(0, $total - $homeFeeApplied), 2);
+        } elseif ($plan > Student::PAYMENT_PLAN_SINGLE) {
             $request->validate([
                 'payment_initial' => [
                     'required',
@@ -245,11 +260,31 @@ class StudentController extends Controller
             ]);
 
             $initial = round((float) $request->input('payment_initial'), 2);
+        } elseif ($plan === Student::PAYMENT_PLAN_PER_CLASS) {
+            $request->validate([
+                'payment_initial' => [
+                    'nullable',
+                    'numeric',
+                    'min:0',
+                    function (string $attribute, mixed $value, \Closure $fail) use ($total): void {
+                        if ($value === null || $value === '') {
+                            return;
+                        }
+
+                        if (round((float) $value, 2) > $total) {
+                            $fail('El abono no puede ser mayor al total.');
+                        }
+                    },
+                ],
+            ]);
+
+            $initial = round((float) $request->input('payment_initial', 0), 2);
         }
 
         return [
             'home_fee_percent' => $homeFee['percent'],
             'home_fee_amount' => $homeFee['amount'],
+            'home_fee_mode' => $homeFeeMode,
             'payment_subtotal' => $subtotal,
             'discount_percent' => $percent,
             'discount_amount' => $amount,
@@ -335,6 +370,58 @@ class StudentController extends Controller
         return response()->json([
             'message' => "Registro exitoso. Horarios enviados por correo a {$student->email}.",
             'email' => $student->email,
+            'receipt_url' => route('admin.students.receipt', $student),
+            'receipt_send_url' => route('admin.students.receipt-email', $student),
+            'history_url' => route('admin.students.payment-history', $student),
+        ]);
+    }
+
+    public function receipt(Student $student): Response
+    {
+        return response($this->studentMail->receiptHtml($student))
+            ->header('Content-Type', 'text/html; charset=UTF-8')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+
+    public function paymentHistory(Student $student): JsonResponse
+    {
+        return response()->json(PaymentHistoryPayload::from($student));
+    }
+
+    public function sendReceipt(Student $student): JsonResponse
+    {
+        if (! filled($student->email)) {
+            return response()->json([
+                'message' => 'El alumno no tiene un correo para enviar el recibo.',
+            ], 422);
+        }
+
+        $sent = $this->studentMail->sendScheduleAndReceipt($student);
+
+        if (! $sent['receipt']) {
+            return response()->json([
+                'message' => 'No se pudo enviar el recibo por correo. Intenta de nuevo.',
+            ], 500);
+        }
+
+        if ($sent['has_classes'] && ! $sent['schedule']) {
+            return response()->json([
+                'message' => "El recibo se envió a {$student->email}, pero no se pudieron enviar los horarios. Intenta de nuevo.",
+                'email' => $student->email,
+                'receipt_sent' => true,
+                'schedule_sent' => false,
+            ], 500);
+        }
+
+        $message = $sent['has_classes']
+            ? "Horarios y recibo enviados por correo a {$student->email}."
+            : "Recibo enviado por correo a {$student->email}.";
+
+        return response()->json([
+            'message' => $message,
+            'email' => $student->email,
+            'receipt_sent' => true,
+            'schedule_sent' => $sent['schedule'],
         ]);
     }
 
@@ -362,13 +449,12 @@ class StudentController extends Controller
                 },
             ],
             'payment_method' => ['required', Rule::in(array_keys(Student::PAYMENT_METHODS))],
-            'paid_at' => ['nullable', 'date'],
         ]);
 
         $payment = $student->recordInstallment(
             (float) $validated['amount'],
             $validated['payment_method'],
-            $validated['paid_at'] ?? now()->toDateString(),
+            now()->toDateString(),
         );
 
         $remaining = $student->fresh(['payments'])->balanceDue();

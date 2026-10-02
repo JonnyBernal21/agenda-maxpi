@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Mail\StudentPaymentReceiptMail;
 use App\Mail\StudentScheduleAssignedMail;
 use App\Models\Reservas;
 use App\Models\Student;
+use App\Support\PaymentReceiptPayload;
 use App\Support\ReservaSchedulePayload;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Collection;
@@ -39,8 +41,48 @@ class StudentMailService
         );
     }
 
-    private function deliver(string $email, Mailable $mail): bool
+    public function sendReceipt(Student $student): bool
     {
+        return $this->deliver($student->email, $this->receiptMail($student));
+    }
+
+    /**
+     * @return array{schedule: bool, receipt: bool, has_classes: bool}
+     */
+    public function sendScheduleAndReceipt(Student $student): array
+    {
+        $hasClasses = $student->reservas()
+            ->where('status', '!=', 'cancelada')
+            ->exists();
+
+        return [
+            'has_classes' => $hasClasses,
+            'schedule' => $hasClasses && $this->sendSchedule($student),
+            'receipt' => $this->sendReceipt($student),
+        ];
+    }
+
+    public function receiptHtml(Student $student): string
+    {
+        return $this->receiptMail($student)->render();
+    }
+
+    public function receiptMail(Student $student): StudentPaymentReceiptMail
+    {
+        return new StudentPaymentReceiptMail(
+            $student,
+            PaymentReceiptPayload::from($student),
+        );
+    }
+
+    private function deliver(?string $email, Mailable $mail): bool
+    {
+        $email = trim((string) $email);
+
+        if ($email === '') {
+            return false;
+        }
+
         try {
             Mail::to($email)->send($mail);
 

@@ -43,7 +43,13 @@ class EnsurePermission
                 'students.edit',
                 'students.delete',
             ],
-            in_array($route, ['admin.students.schedule', 'admin.students.schedule-email'], true) => [
+            in_array($route, [
+                'admin.students.schedule',
+                'admin.students.schedule-email',
+                'admin.students.receipt',
+                'admin.students.receipt-email',
+                'admin.students.payment-history',
+            ], true) => [
                 'students.view',
                 'students.manage',
                 'students.edit',

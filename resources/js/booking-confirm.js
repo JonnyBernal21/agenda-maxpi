@@ -10,6 +10,7 @@ const swalBookingDefaults = {
     confirmButtonColor: CONFIRM_COLOR,
     cancelButtonColor: CANCEL_COLOR,
     customClass: {
+        container: 'swal-over-modal',
         popup: 'swal-booking-popup',
         title: 'swal-booking-title',
         htmlContainer: 'swal-booking-html',
@@ -81,6 +82,7 @@ export function showBookingSuccess(message, title = '¡Reserva creada!') {
         confirmButtonText: 'Entendido',
         confirmButtonColor: CONFIRM_COLOR,
         customClass: {
+            container: 'swal-over-modal',
             popup: 'swal-booking-popup',
             title: 'swal-booking-title',
         },
@@ -95,6 +97,7 @@ export function showBookingError(message, title = 'No se pudo completar') {
         confirmButtonText: 'Cerrar',
         confirmButtonColor: CONFIRM_COLOR,
         customClass: {
+            container: 'swal-over-modal',
             popup: 'swal-booking-popup',
             title: 'swal-booking-title',
         },

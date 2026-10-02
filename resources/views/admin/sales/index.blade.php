@@ -1,11 +1,11 @@
 @extends('layouts.admin')
 
-@section('title', 'Ventas — ' . config('app.name'))
+@section('title', 'Ingresos — ' . config('app.name'))
 
 @section('content')
     <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3">
         <div>
-            <h1 class="page-title mb-1">Ventas</h1>
+            <h1 class="page-title mb-1">Ingresos</h1>
             <p class="page-subtitle mb-0">
                 Pagos de inscripción y abonos
                 @if ($is_today)
@@ -72,8 +72,8 @@
 
     @include('admin.partials.panel-table', [
         'icon' => 'bi-cash-stack',
-        'title' => 'Registro de ventas',
-        'subtitle' => count($sales) . ' ventas en total',
+        'title' => 'Registro de ingresos',
+        'subtitle' => count($sales).' '.(count($sales) === 1 ? 'ingreso' : 'ingresos').' en total',
         'table' => view('admin.partials.tables.sales-table', compact('sales'))->render(),
     ])
 @endsection

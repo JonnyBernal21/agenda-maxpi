@@ -36,10 +36,12 @@ export const bindStudentEnrollment = ({ form, modalEl, setFieldValue }) => {
 
     const homeSelect = form.querySelector('[name="is_home_class"]');
     const homeFeeInput = form.querySelector('[name="home_fee"]');
+    const homeFeeModeInputs = () => [...form.querySelectorAll('[name="home_fee_mode"]')];
     const notesInput = form.querySelector('[name="meeting_point"]');
     const latInput = form.querySelector('[name="meeting_lat"]');
     const lngInput = form.querySelector('[name="meeting_lng"]');
     const homeWrap = document.getElementById('studentHomeClassWrap');
+    const homeFeeWrap = document.getElementById('studentHomeFeeWrap');
     const mapEl = document.getElementById('studentMeetingMap');
     const searchInput = document.getElementById('student_meeting_search');
     const searchBtn = document.getElementById('studentMeetingSearchBtn');
@@ -67,6 +69,44 @@ export const bindStudentEnrollment = ({ form, modalEl, setFieldValue }) => {
     let locating = false;
 
     const isHomeClass = () => String(homeSelect?.value || '0') === '1';
+
+    const homeFeeMode = () => {
+        const checked = homeFeeModeInputs().find((input) => input.checked);
+
+        return checked?.value === 'per_payment' ? 'per_payment' : 'total';
+    };
+
+    const setHomeFeeMode = (mode) => {
+        const value = mode === 'per_payment' ? 'per_payment' : 'total';
+
+        homeFeeModeInputs().forEach((input) => {
+            input.checked = input.value === value;
+        });
+    };
+
+    const courseClasses = () => {
+        const selected = courseSelect?.selectedOptions?.[0];
+
+        return Math.max(1, Number(selected?.dataset.numClasses || 0) || 1);
+    };
+
+    const homeFeeMultiplier = () => {
+        if (!isHomeClass() || homeFeeMode() !== 'per_payment') {
+            return 1;
+        }
+
+        const plan = Number(planSelect?.value ?? 1);
+
+        if (plan === 0 || plan === 1) {
+            return courseClasses();
+        }
+
+        if (plan > 1) {
+            return plan;
+        }
+
+        return 1;
+    };
 
     const parsedCoords = () => {
         const lat = Number(latInput?.value);
@@ -314,13 +354,22 @@ export const bindStudentEnrollment = ({ form, modalEl, setFieldValue }) => {
         const show = isHomeClass();
 
         homeWrap?.classList.toggle('d-none', !show);
+        homeFeeWrap?.classList.toggle('d-none', !show);
 
         if (homeFeeInput) {
             homeFeeInput.disabled = !show;
+        }
 
-            if (!show) {
+        homeFeeModeInputs().forEach((input) => {
+            input.disabled = !show;
+        });
+
+        if (!show) {
+            if (homeFeeInput) {
                 homeFeeInput.value = '';
             }
+
+            setHomeFeeMode('total');
         }
 
         if (notesInput) {
@@ -387,7 +436,9 @@ export const bindStudentEnrollment = ({ form, modalEl, setFieldValue }) => {
         return { percent, amount };
     };
 
-    const homeFee = () => (isHomeClass() ? parseSurcharge(homeFeeInput?.value, courseCost()).amount : 0);
+    const homeFeeUnit = () => (isHomeClass() ? parseSurcharge(homeFeeInput?.value, courseCost()).amount : 0);
+
+    const homeFee = () => Number((homeFeeUnit() * homeFeeMultiplier()).toFixed(2));
 
     const parseDiscount = (raw, subtotal) => {
         let text = String(raw || '')
@@ -424,21 +475,73 @@ export const bindStudentEnrollment = ({ form, modalEl, setFieldValue }) => {
     };
 
     const updatePlanHint = (total) => {
-        const parts = Number(planSelect?.value || 1);
-        const showInitial = parts > 1;
+        const planValue = String(planSelect?.value ?? '1');
+        const isPerClass = planValue === '0';
+        const parts = Number(planValue);
+        const showInitial = parts > 1 || isPerClass;
+        const initialLabel = document.getElementById('studentPaymentInitialLabel');
+        const initialHelp = document.getElementById('studentPaymentInitialHelp');
+        const selectedCourse = courseSelect?.selectedOptions?.[0];
+        const classes = Math.max(0, Number(selectedCourse?.dataset.numClasses || 0));
 
         initialWrap?.classList.toggle('d-none', !showInitial);
 
         if (initialInput) {
             initialInput.disabled = !showInitial;
-            initialInput.required = showInitial;
+            initialInput.required = parts > 1;
+            initialInput.min = isPerClass ? '0' : '0.01';
+        }
+
+        if (initialLabel) {
+            initialLabel.textContent = isPerClass ? 'Abono de hoy (opcional)' : 'Cantidad inicial abonada';
+        }
+
+        if (initialHelp) {
+            initialHelp.textContent = isPerClass
+                ? 'Si paga ahora la primera clase, regístralo aquí. Si no, el saldo queda pendiente.'
+                : 'Lo que paga hoy. El resto se reparte en los pagos siguientes.';
         }
 
         if (!planHint) {
             return;
         }
 
+        if (isPerClass) {
+            if (!classes) {
+                planHint.textContent = 'Elige un curso para calcular el pago por clase.';
+                return;
+            }
+
+            const perClass = Number((total / classes).toFixed(2));
+
+            if (initialInput && !initialInput.value) {
+                initialInput.placeholder = perClass.toFixed(2);
+            }
+
+            const initial = Number(initialInput?.value || 0);
+            const remaining = Number((total - Math.max(0, initial)).toFixed(2));
+
+            if (Number.isFinite(initial) && initial > total) {
+                planHint.textContent = 'El abono no puede ser mayor al total.';
+                return;
+            }
+
+            planHint.textContent = initial > 0
+                ? `Pago por clase: ${classes} ${classes === 1 ? 'clase' : 'clases'} de ${money(perClass)}. Abonado ahora: ${money(initial)}. Restan ${money(remaining)} hasta liquidar.`
+                : `Pago por clase: ${classes} ${classes === 1 ? 'clase' : 'clases'} de ${money(perClass)}. El alumno abona en cada clase hasta liquidar.`;
+            return;
+        }
+
         if (!showInitial) {
+            const unit = homeFeeUnit();
+            const applied = homeFee();
+
+            if (isHomeClass() && homeFeeMode() === 'per_payment' && unit > 0 && classes > 0) {
+                const courseNow = Number((total - applied).toFixed(2));
+                planHint.textContent = `Hoy se cobra el curso: ${money(Math.max(0, courseNow))}. La tarifa a domicilio (${money(unit)} por clase) se abona en cada clase. Quedan ${money(applied)} pendientes en ${classes} ${classes === 1 ? 'clase' : 'clases'}.`;
+                return;
+            }
+
             planHint.textContent = 'Se cobra el total en un solo pago.';
             return;
         }
@@ -476,14 +579,23 @@ export const bindStudentEnrollment = ({ form, modalEl, setFieldValue }) => {
         const total = Math.max(0, Number((subtotal - amount).toFixed(2)));
 
         if (homeFeeHint) {
-            const fee = homeFee();
+            const unit = homeFeeUnit();
+            const times = homeFeeMultiplier();
+            const applied = homeFee();
+            const planValue = String(planSelect?.value ?? '1');
 
             if (!isHomeClass()) {
-                homeFeeHint.textContent = 'Escribe un monto para sumarlo al total, o un porcentaje (ej. %10) para aplicarlo sobre el costo del curso.';
-            } else if (fee > 0) {
-                homeFeeHint.textContent = `Se suman ${money(fee)} al costo del curso.`;
+                homeFeeHint.textContent = 'Escribe un monto o un porcentaje (ej. %10). Luego elige si se suma al total o se aplica en cada clase o abono.';
+            } else if (unit <= 0) {
+                homeFeeHint.textContent = 'Escribe un monto o un porcentaje (ej. %10). Luego elige si se suma al total o se aplica en cada clase o abono.';
+            } else if (homeFeeMode() !== 'per_payment') {
+                homeFeeHint.textContent = `Se suman ${money(unit)} una sola vez al costo del curso.`;
+            } else if (planValue === '1') {
+                homeFeeHint.textContent = `Hoy se cobra el curso. La tarifa de ${money(unit)} se abona en cada una de las ${times} ${times === 1 ? 'clase' : 'clases'}. Tarifa total: ${money(applied)}.`;
+            } else if (planValue === '0') {
+                homeFeeHint.textContent = `Se aplican ${money(unit)} en cada una de las ${times} ${times === 1 ? 'clase' : 'clases'}. Tarifa total: ${money(applied)}.`;
             } else {
-                homeFeeHint.textContent = 'Escribe un monto para sumarlo al total, o un porcentaje (ej. %10) para aplicarlo sobre el costo del curso.';
+                homeFeeHint.textContent = `Se aplican ${money(unit)} en cada uno de los ${times} ${times === 1 ? 'abono' : 'abonos'}. Tarifa total: ${money(applied)}.`;
             }
         }
 
@@ -501,6 +613,7 @@ export const bindStudentEnrollment = ({ form, modalEl, setFieldValue }) => {
     const resetEnrollment = () => {
         setFieldValue('is_home_class', '0');
         setFieldValue('home_fee', '');
+        setHomeFeeMode('total');
         setFieldValue('meeting_point', '');
         setFieldValue('meeting_lat', '');
         setFieldValue('meeting_lng', '');
@@ -529,6 +642,7 @@ export const bindStudentEnrollment = ({ form, modalEl, setFieldValue }) => {
         didAutoLocate = schoolCentered;
         syncHomeNotes();
         setFieldValue('home_fee', button.dataset.homeFee || '');
+        setHomeFeeMode(button.dataset.homeFeeMode || 'total');
         refreshPayment();
     };
 
@@ -538,6 +652,9 @@ export const bindStudentEnrollment = ({ form, modalEl, setFieldValue }) => {
     });
     courseSelect?.addEventListener('change', () => refreshPayment());
     homeFeeInput?.addEventListener('input', () => refreshPayment());
+    homeFeeModeInputs().forEach((input) => {
+        input.addEventListener('change', () => refreshPayment());
+    });
     discountInput?.addEventListener('input', () => refreshPayment());
     planSelect?.addEventListener('change', () => refreshPayment());
     initialInput?.addEventListener('input', () => refreshPayment());
@@ -563,5 +680,13 @@ export const bindStudentEnrollment = ({ form, modalEl, setFieldValue }) => {
         resetEnrollment,
         fillEnrollment,
         refreshPayment,
+        revealHomeMap() {
+            syncHomeNotes();
+            refreshPayment();
+
+            if (map) {
+                window.setTimeout(() => map.invalidateSize(), 220);
+            }
+        },
     };
 };

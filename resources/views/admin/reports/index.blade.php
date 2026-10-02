@@ -48,7 +48,7 @@
         <div class="col-md-6">
             <div class="kpi-card kpi-card--sales">
                 <div class="kpi-card__icon"><i class="bi bi-cash-stack"></i></div>
-                <p class="kpi-card__label">{{ $report['is_single_day'] ? 'Ventas del día' : 'Ventas del periodo' }}</p>
+                <p class="kpi-card__label">{{ $report['is_single_day'] ? 'Ingresos del día' : 'Ingresos del periodo' }}</p>
                 <p class="kpi-card__value kpi-card__value--money">{{ '$'.number_format($report['sales']['total'], 2) }}</p>
                 <p class="kpi-card__hint">{{ $report['sales']['count'] }} {{ $report['sales']['count'] === 1 ? 'movimiento' : 'movimientos' }}</p>
             </div>

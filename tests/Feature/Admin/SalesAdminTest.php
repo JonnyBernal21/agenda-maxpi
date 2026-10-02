@@ -40,9 +40,10 @@ class SalesAdminTest extends TestCase
         $this->actingAs(User::factory()->create(['role_id' => $role->id]))
             ->get(route('admin.sales.index'))
             ->assertOk()
-            ->assertSee('Ventas')
-            ->assertSee('Registro de ventas')
+            ->assertSee('Ingresos')
+            ->assertSee('Registro de ingresos')
             ->assertDontSee('Agregar venta')
+            ->assertDontSee('Agregar ingreso')
             ->assertDontSee('Registró alumno');
     }
 
@@ -98,7 +99,7 @@ class SalesAdminTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('admin.sales.index'))
             ->assertOk()
-            ->assertSee('3 ventas en total')
+            ->assertSee('3 ingresos en total')
             ->assertSee('ANA GARCIA')
             ->assertSee('ROBERTO VALDEZ')
             ->assertSee('Pago completo · Curso intensivo')
@@ -126,7 +127,8 @@ class SalesAdminTest extends TestCase
                 'Fecha y hora',
             ])
             ->assertDontSee('Registró alumno')
-            ->assertDontSee('Agregar venta');
+            ->assertDontSee('Agregar venta')
+            ->assertDontSee('Agregar ingreso');
     }
 
     public function test_sales_list_can_be_filtered_by_date_range(): void
@@ -155,13 +157,13 @@ class SalesAdminTest extends TestCase
             ->assertOk()
             ->assertSee('$2,222.00')
             ->assertDontSee('$1,111.00')
-            ->assertSee('1 ventas en total');
+            ->assertSee('1 ingreso en total');
 
         $this->get(route('admin.sales.index', ['from' => '2026-09-20', 'to' => '2026-09-21']))
             ->assertOk()
             ->assertSee('$1,111.00')
             ->assertSee('$2,222.00')
-            ->assertSee('2 ventas en total');
+            ->assertSee('2 ingresos en total');
     }
 
     public function test_registering_a_student_stores_the_author_on_the_sale(): void

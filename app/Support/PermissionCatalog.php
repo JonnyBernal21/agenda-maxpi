@@ -26,7 +26,7 @@ final class PermissionCatalog
             'reservas.manage' => 'Agendar y gestionar clases',
         ],
         'Finanzas' => [
-            'sales.view' => 'Ver ventas',
+            'sales.view' => 'Ver ingresos',
             'expenses.manage' => 'Gestionar gastos',
             'reports.view' => 'Ver reportes',
         ],

@@ -24,6 +24,10 @@ class Student extends Authenticatable
 
     public const PAYMENT_CARD = 'tarjeta';
 
+    public const PAYMENT_PLAN_PER_CLASS = 0;
+
+    public const PAYMENT_PLAN_SINGLE = 1;
+
     /**
      * @var array<string, string>
      */
@@ -37,10 +41,23 @@ class Student extends Authenticatable
      * @var array<int, string>
      */
     public const PAYMENT_PLANS = [
-        1 => 'Un solo pago',
+        self::PAYMENT_PLAN_SINGLE => 'Un solo pago',
+        self::PAYMENT_PLAN_PER_CLASS => 'Pago por clase',
         2 => 'Dos pagos',
         3 => 'Tres pagos',
         4 => 'Cuatro pagos',
+    ];
+
+    public const HOME_FEE_MODE_TOTAL = 'total';
+
+    public const HOME_FEE_MODE_PER_PAYMENT = 'per_payment';
+
+    /**
+     * @var array<string, string>
+     */
+    public const HOME_FEE_MODES = [
+        self::HOME_FEE_MODE_TOTAL => 'Se suma al costo total',
+        self::HOME_FEE_MODE_PER_PAYMENT => 'Se aplica en cada clase o abono',
     ];
 
     /**
@@ -67,6 +84,7 @@ class Student extends Authenticatable
         'meeting_lng',
         'home_fee_percent',
         'home_fee_amount',
+        'home_fee_mode',
         'payment_subtotal',
         'discount_percent',
         'discount_amount',
@@ -190,11 +208,129 @@ class Student extends Authenticatable
 
     public function firstPaymentAmount(): float
     {
-        if ((int) $this->payment_plan > 1) {
+        if ($this->isInstallmentPlan() || $this->isPerClassPlan() || $this->defersHomeFeeToAbonos()) {
             return round((float) $this->payment_initial, 2);
         }
 
         return round((float) $this->payment_total, 2);
+    }
+
+    public function isPerClassPlan(): bool
+    {
+        return (int) $this->payment_plan === self::PAYMENT_PLAN_PER_CLASS;
+    }
+
+    public function isInstallmentPlan(): bool
+    {
+        return (int) $this->payment_plan > self::PAYMENT_PLAN_SINGLE;
+    }
+
+    public static function homeFeeMultiplier(string $mode, int $plan, int $classes): int
+    {
+        if ($mode !== self::HOME_FEE_MODE_PER_PAYMENT) {
+            return 1;
+        }
+
+        if ($plan === self::PAYMENT_PLAN_PER_CLASS || $plan === self::PAYMENT_PLAN_SINGLE) {
+            return max(1, $classes);
+        }
+
+        if ($plan > self::PAYMENT_PLAN_SINGLE) {
+            return $plan;
+        }
+
+        return 1;
+    }
+
+    public function defersHomeFeeToAbonos(): bool
+    {
+        return $this->isHomeFeePerPayment()
+            && (int) $this->payment_plan === self::PAYMENT_PLAN_SINGLE
+            && $this->homeFeeAppliedAmount() > 0;
+    }
+
+    public function isHomeFeePerPayment(): bool
+    {
+        return $this->is_home_class
+            && (string) $this->home_fee_mode === self::HOME_FEE_MODE_PER_PAYMENT;
+    }
+
+    public function homeFeeTimes(): int
+    {
+        $classes = (int) ($this->course?->num_classes ?? 0);
+
+        if ($classes < 1) {
+            $classes = $this->allowedClassesCount();
+        }
+
+        return self::homeFeeMultiplier(
+            (string) ($this->home_fee_mode ?: self::HOME_FEE_MODE_TOTAL),
+            (int) $this->payment_plan,
+            $classes,
+        );
+    }
+
+    public function homeFeeAppliedAmount(): float
+    {
+        if (! $this->is_home_class) {
+            return 0.0;
+        }
+
+        return round((float) $this->home_fee_amount * $this->homeFeeTimes(), 2);
+    }
+
+    public function homeFeeModeLabel(): string
+    {
+        if (! $this->is_home_class || (float) $this->home_fee_amount <= 0) {
+            return '';
+        }
+
+        return self::HOME_FEE_MODES[$this->home_fee_mode] ?? self::HOME_FEE_MODES[self::HOME_FEE_MODE_TOTAL];
+    }
+
+    public function homeFeeTimesLabel(): string
+    {
+        $times = $this->homeFeeTimes();
+
+        if (! $this->isHomeFeePerPayment() || $times <= 1) {
+            return '';
+        }
+
+        if ($this->isPerClassPlan() || (int) $this->payment_plan === self::PAYMENT_PLAN_SINGLE) {
+            return $times.' '.($times === 1 ? 'clase' : 'clases');
+        }
+
+        if ($this->isInstallmentPlan()) {
+            return $times.' '.($times === 1 ? 'abono' : 'abonos');
+        }
+
+        return '';
+    }
+
+    public function amountPerClass(): float
+    {
+        $classes = max(1, $this->allowedClassesCount());
+
+        return round((float) $this->payment_total / $classes, 2);
+    }
+
+    public function suggestedAbonoAmount(): float
+    {
+        $balance = $this->balanceDue();
+
+        if ($balance <= 0) {
+            return 0.0;
+        }
+
+        if ($this->defersHomeFeeToAbonos()) {
+            return round(min((float) $this->home_fee_amount, $balance), 2);
+        }
+
+        if ($this->isPerClassPlan()) {
+            return round(min($this->amountPerClass(), $balance), 2);
+        }
+
+        return 0.0;
     }
 
     public function recordPayment(?string $paidAt = null): ?StudentPayment

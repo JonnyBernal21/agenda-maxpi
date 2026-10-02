@@ -2,7 +2,7 @@
     <div class="balance-report__header">
         <h2 class="balance-report__title">
             <i class="bi bi-bar-chart-line"></i>
-            Reporte de ventas y gastos por mes
+            Reporte de ingresos y gastos por mes
         </h2>
         <form
             id="balanceYearForm"
@@ -29,7 +29,7 @@
                             <tr>
                                 <th>#</th>
                                 <th>Mes</th>
-                                <th class="text-end">Ventas</th>
+                                <th class="text-end">Ingresos</th>
                                 <th class="text-end">Gastos</th>
                                 <th class="text-end">Balance</th>
                             </tr>

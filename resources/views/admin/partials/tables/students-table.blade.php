@@ -107,7 +107,16 @@
                                     @if ($student->is_home_class && (float) $student->home_fee_amount > 0)
                                         <div class="student-details__row">
                                             <dt>Tarifa envío</dt>
-                                            <dd>{{ $student->homeFeeInput() }} · ${{ number_format((float) $student->home_fee_amount, 2) }}</dd>
+                                            <dd>
+                                                {{ $student->homeFeeInput() }}
+                                                · {{ $student->homeFeeModeLabel() }}
+                                                @if ($student->homeFeeTimes() > 1)
+                                                    · {{ $student->homeFeeTimes() }} × ${{ number_format((float) $student->home_fee_amount, 2) }}
+                                                    = ${{ number_format($student->homeFeeAppliedAmount(), 2) }}
+                                                @else
+                                                    · ${{ number_format((float) $student->home_fee_amount, 2) }}
+                                                @endif
+                                            </dd>
                                         </div>
                                     @endif
                                     <div class="student-details__row">
@@ -142,9 +151,15 @@
                                         <dt>Plan</dt>
                                         <dd>{{ $student->paymentPlanLabel() }}</dd>
                                     </div>
-                                    @if ((int) $student->payment_plan > 1)
+                                    @if ($student->isPerClassPlan())
                                         <div class="student-details__row">
-                                            <dt>Abono inicial</dt>
+                                            <dt>Por clase</dt>
+                                            <dd>${{ number_format($student->amountPerClass(), 2) }}</dd>
+                                        </div>
+                                    @endif
+                                    @if ($student->isInstallmentPlan() || ($student->isPerClassPlan() && (float) $student->payment_initial > 0) || $student->defersHomeFeeToAbonos())
+                                        <div class="student-details__row">
+                                            <dt>{{ $student->isPerClassPlan() ? 'Abono de hoy' : ($student->defersHomeFeeToAbonos() ? 'Hoy (curso)' : 'Abono inicial') }}</dt>
                                             <dd>${{ number_format((float) $student->payment_initial, 2) }}</dd>
                                         </div>
                                     @endif
@@ -219,6 +234,7 @@
                                 data-balance="{{ number_format($balanceDue, 2, '.', '') }}"
                                 data-balance-label="${{ number_format($balanceDue, 2) }}"
                                 data-payment-method="{{ $student->payment_method }}"
+                                data-per-class-amount="{{ ($suggested = $student->suggestedAbonoAmount()) > 0 ? number_format($suggested, 2, '.', '') : '' }}"
                                 data-pay-url="{{ route('admin.students.payments.store', $student) }}"
                             >
                                 <i class="bi bi-cash-coin"></i>
@@ -226,6 +242,17 @@
                             </button>
                             @endcan
                         @endif
+                        <button
+                            type="button"
+                            class="btn student-history-btn js-payment-history"
+                            title="Historial de pagos"
+                            aria-label="Ver historial de pagos de {{ $student->fullName() }}"
+                            data-history-url="{{ route('admin.students.payment-history', $student) }}"
+                            data-student-name="{{ $student->fullName() }}"
+                        >
+                            <i class="bi bi-clock-history"></i>
+                            Historial
+                        </button>
                     </div>
                 </td>
                 <td>
@@ -260,7 +287,11 @@
                             title="Enviar horarios por correo"
                             aria-label="Enviar horarios por correo a {{ $student->fullName() }}"
                             data-email="{{ $student->email }}"
+                            data-student-name="{{ $student->fullName() }}"
                             data-send-url="{{ route('admin.students.schedule-email', $student) }}"
+                            data-receipt-url="{{ route('admin.students.receipt', $student) }}"
+                            data-receipt-send-url="{{ route('admin.students.receipt-email', $student) }}"
+                            data-history-url="{{ route('admin.students.payment-history', $student) }}"
                             @disabled(! $student->email)
                         >
                             <i class="bi bi-envelope"></i>
@@ -286,6 +317,7 @@
                             data-extra-classes='@json($extraClassesForForm)'
                             data-is-home-class="{{ $student->is_home_class ? '1' : '0' }}"
                             data-home-fee="{{ $student->homeFeeInput() }}"
+                            data-home-fee-mode="{{ $student->home_fee_mode ?: 'total' }}"
                             data-meeting-point="{{ $student->meeting_point }}"
                             data-general-notes="{{ $student->notes }}"
                             data-meeting-lat="{{ $student->meeting_lat }}"
@@ -293,7 +325,7 @@
                             data-discount="{{ $student->discountInput() }}"
                             data-payment-method="{{ $student->payment_method }}"
                             data-payment-plan="{{ $student->payment_plan }}"
-                            data-payment-initial="{{ $student->payment_plan > 1 ? number_format((float) $student->payment_initial, 2, '.', '') : '' }}"
+                            data-payment-initial="{{ ($student->isInstallmentPlan() || $student->isPerClassPlan()) && (float) $student->payment_initial > 0 ? number_format((float) $student->payment_initial, 2, '.', '') : '' }}"
                         >
                             <i class="bi bi-pencil"></i>
                         </button>

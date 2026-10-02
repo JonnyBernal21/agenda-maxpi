@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Mail\StudentPaymentReceiptMail;
 use App\Mail\StudentScheduleAssignedMail;
 use App\Models\Course;
 use App\Models\Student;
+use App\Models\StudentPayment;
+use App\Support\PaymentReceiptPayload;
 use App\Support\ReservaSchedulePayload;
 use Carbon\Carbon;
 use Illuminate\Mail\Mailable;
@@ -26,6 +29,13 @@ class EmailPreviewService
                 'description' => 'Confirmación de registro con el horario asignado al alumno.',
                 'audience' => 'Alumnos',
                 'icon' => 'bi-calendar2-week',
+            ],
+            [
+                'key' => 'payment-receipt',
+                'name' => 'Recibo de pago',
+                'description' => 'Desglose del curso, abonos registrados y saldo pendiente.',
+                'audience' => 'Alumnos',
+                'icon' => 'bi-receipt',
             ],
         ];
     }
@@ -51,6 +61,7 @@ class EmailPreviewService
 
         return match ($key) {
             'schedule-assigned' => $this->scheduleAssignedMail($student),
+            'payment-receipt' => $this->paymentReceiptMail($student),
             default => abort(404),
         };
     }
@@ -75,7 +86,7 @@ class EmailPreviewService
     {
         $template = $this->find($key);
         $mailable = $this->mailable($key, $student);
-        $resolved = $mailable instanceof StudentScheduleAssignedMail
+        $resolved = $mailable instanceof StudentScheduleAssignedMail || $mailable instanceof StudentPaymentReceiptMail
             ? $mailable->student
             : ($student ?? $this->sampleStudent());
 
@@ -98,6 +109,21 @@ class EmailPreviewService
         return new StudentScheduleAssignedMail(
             $resolved,
             $this->classesFor($resolved, $student === null),
+        );
+    }
+
+    private function paymentReceiptMail(?Student $student): StudentPaymentReceiptMail
+    {
+        $resolved = $student ?? $this->sampleStudent();
+        $resolved->loadMissing('course');
+
+        if ($student === null) {
+            $this->hydrateSampleReceipt($resolved);
+        }
+
+        return new StudentPaymentReceiptMail(
+            $resolved,
+            PaymentReceiptPayload::from($resolved),
         );
     }
 
@@ -144,8 +170,36 @@ class EmailPreviewService
         ]);
 
         $student->setRelation('course', $course);
+        $student->setRelation('extraClasses', collect());
+        $student->setRelation('payments', collect());
 
         return $student;
+    }
+
+    private function hydrateSampleReceipt(Student $student): void
+    {
+        $student->forceFill([
+            'is_home_class' => true,
+            'home_fee_amount' => 100,
+            'home_fee_percent' => 0,
+            'payment_subtotal' => 3600,
+            'discount_amount' => 200,
+            'discount_percent' => 0,
+            'payment_total' => 3400,
+            'payment_method' => Student::PAYMENT_CASH,
+            'payment_plan' => Student::PAYMENT_PLAN_PER_CLASS,
+            'payment_initial' => 680,
+        ]);
+        $student->id = 128;
+
+        $payment = new StudentPayment([
+            'amount' => 680,
+            'paid_at' => now()->toDateString(),
+            'payment_method' => Student::PAYMENT_CASH,
+        ]);
+        $payment->setRelation('student', $student);
+        $student->setRelation('payments', collect([$payment]));
+        $student->setRelation('extraClasses', collect());
     }
 
     /**

@@ -52,6 +52,38 @@ const startOfWeek = (date) => {
     return next;
 };
 
+const addCalendarDays = (date, days) => {
+    const next = startOfDay(date);
+    next.setDate(next.getDate() + days);
+
+    return next;
+};
+
+const nextIsoWeekday = (from, isoDay) => {
+    const date = startOfDay(from);
+    const current = date.getDay() === 0 ? 7 : date.getDay();
+    let delta = isoDay - current;
+
+    if (delta <= 0) {
+        delta += 7;
+    }
+
+    return addCalendarDays(date, delta);
+};
+
+const formatDisplayDate = (iso) => {
+    const date = parseLocalDate(iso);
+
+    if (!date) {
+        return '';
+    }
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+
+    return `${day}/${month}/${date.getFullYear()}`;
+};
+
 const presetRanges = () => {
     const today = startOfDay(new Date());
     const yesterday = startOfDay(today);
@@ -76,6 +108,21 @@ const presetRanges = () => {
         'Mes anterior': [lastMonthStart, lastMonthEnd],
         'Este año': [yearStart, yearEnd],
     };
+};
+
+const presetSingleDays = (minIso = '') => {
+    const min = parseLocalDate(minIso);
+    const today = startOfDay(new Date());
+    const allowed = (date) => !min || date.getTime() >= min.getTime();
+    const days = {
+        Hoy: today,
+        Ayer: addCalendarDays(today, -1),
+        Mañana: addCalendarDays(today, 1),
+        'Próximo lunes': nextIsoWeekday(today, 1),
+        'Próximo viernes': nextIsoWeekday(today, 5),
+    };
+
+    return Object.fromEntries(Object.entries(days).filter(([, date]) => allowed(date)));
 };
 
 const markActiveRange = (ui, fromValue, toValue) => {
@@ -163,3 +210,109 @@ export const bindDateRangePickers = async () => {
         });
     });
 };
+
+export const bindSingleDatePickers = async (root = document) => {
+    const fields = [...root.querySelectorAll('.js-single-date')].filter((field) => field.dataset.pickerBound !== 'true');
+
+    if (fields.length === 0) {
+        return [];
+    }
+
+    const wide = window.matchMedia('(min-width: 768px)').matches;
+
+    return fields.map((field) => {
+        const display = field.querySelector('.js-single-date-display');
+        const valueInput = field.querySelector('.js-single-date-value');
+
+        if (!display || !valueInput) {
+            return null;
+        }
+
+        field.dataset.pickerBound = 'true';
+
+        const minDate = parseLocalDate(field.dataset.minDate || valueInput.min || '');
+        const selected = parseLocalDate(valueInput.value);
+        const presets = presetSingleDays(field.dataset.minDate || valueInput.min || '');
+        const rangesPosition = wide ? 'left' : 'top';
+
+        const instance = new Litepicker({
+            element: display,
+            startDate: selected || undefined,
+            singleMode: true,
+            autoApply: true,
+            numberOfMonths: 1,
+            numberOfColumns: 1,
+            firstDay: 1,
+            format: 'DD/MM/YYYY',
+            lang: 'es-MX',
+            minDate: minDate || undefined,
+            showTooltip: false,
+            zIndex: 2000,
+            dropdowns: {
+                minYear: 2020,
+                maxYear: null,
+                months: true,
+                years: true,
+            },
+            setup(picker) {
+                picker.on('render', (ui) => {
+                    ui.dataset.plugins = 'ranges';
+                    ui.dataset.rangesPosition = rangesPosition;
+                    ui.dataset.singleDay = 'true';
+
+                    const main = ui.querySelector('.container__main');
+
+                    if (!main || main.querySelector('.container__predefined-ranges')) {
+                        return;
+                    }
+
+                    const sidebar = document.createElement('div');
+                    sidebar.className = 'container__predefined-ranges';
+
+                    Object.entries(presets).forEach(([label, date]) => {
+                        const button = document.createElement('button');
+                        const iso = isoDate(date);
+                        button.type = 'button';
+                        button.textContent = label;
+                        button.dataset.date = iso;
+                        button.classList.toggle('is-active', iso === valueInput.value);
+                        button.addEventListener('click', (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            picker.setDate(date);
+                            picker.hide();
+                        });
+                        sidebar.appendChild(button);
+                    });
+
+                    main.prepend(sidebar);
+                });
+
+                picker.on('selected', (start) => {
+                    if (!start) {
+                        return;
+                    }
+
+                    const next = isoDate(start);
+                    display.value = formatDisplayDate(next);
+
+                    if (valueInput.value === next) {
+                        return;
+                    }
+
+                    valueInput.value = next;
+                    valueInput.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            },
+        });
+
+        if (valueInput.value) {
+            display.value = formatDisplayDate(valueInput.value);
+        }
+
+        valueInput._litepicker = instance;
+
+        return instance;
+    }).filter(Boolean);
+};
+

@@ -42,6 +42,9 @@ class StudentPaymentStatusTest extends TestCase
             ->assertSee('Dos pagos')
             ->assertSee('Debe $3,000.00')
             ->assertSee('Abonar')
+            ->assertSee('name="amount"', false)
+            ->assertSee('name="payment_method"', false)
+            ->assertDontSee('name="paid_at"', false)
             ->assertDontSee('>Liquidado</span>', false);
     }
 
@@ -69,6 +72,26 @@ class StudentPaymentStatusTest extends TestCase
             ->assertDontSee('Debe $');
     }
 
+    public function test_per_class_students_show_the_plan_and_can_abonar(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $student = $this->makeStudent([
+            'name' => 'Elena',
+            'last_name' => 'Ruiz',
+            'payment_total' => 4000,
+            'payment_plan' => Student::PAYMENT_PLAN_PER_CLASS,
+            'payment_method' => Student::PAYMENT_CASH,
+        ]);
+
+        $this->get(route('admin.students.index'))
+            ->assertOk()
+            ->assertSee('Pago por clase')
+            ->assertSee('$800.00')
+            ->assertSee('Debe $4,000.00')
+            ->assertSee('js-student-pay', false)
+            ->assertSee('data-per-class-amount="800.00"', false);
+    }
+
     public function test_admin_can_register_an_installment_payment(): void
     {
         $this->actingAs(User::factory()->create());
@@ -89,15 +112,18 @@ class StudentPaymentStatusTest extends TestCase
                 'student_id' => $student->id,
                 'amount' => 1500,
                 'payment_method' => Student::PAYMENT_TRANSFER,
-                'paid_at' => now()->toDateString(),
+                'paid_at' => '2020-01-01',
             ])
             ->assertRedirect(route('admin.students.index'));
+
+        $payment = $student->payments()->where('amount', 1500)->first();
 
         $this->assertDatabaseHas('student_payments', [
             'student_id' => $student->id,
             'amount' => 1500.00,
             'payment_method' => Student::PAYMENT_TRANSFER,
         ]);
+        $this->assertSame(now()->toDateString(), $payment?->paid_at?->toDateString());
         $this->assertSame(1500.0, $student->fresh()->load('payments')->balanceDue());
     }
 
@@ -120,7 +146,6 @@ class StudentPaymentStatusTest extends TestCase
                 '_form' => 'student-payment',
                 'amount' => 2000,
                 'payment_method' => Student::PAYMENT_CASH,
-                'paid_at' => now()->toDateString(),
             ])
             ->assertRedirect(route('admin.students.index'))
             ->assertSessionHasErrors('amount');

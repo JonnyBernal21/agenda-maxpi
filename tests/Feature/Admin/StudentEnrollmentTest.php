@@ -67,6 +67,7 @@ class StudentEnrollmentTest extends TestCase
             'is_home_class' => 1,
             'home_fee_amount' => 100.00,
             'home_fee_percent' => 2.86,
+            'home_fee_mode' => Student::HOME_FEE_MODE_TOTAL,
             'payment_subtotal' => 3600.00,
             'payment_total' => 3600.00,
         ]);
@@ -202,6 +203,93 @@ class StudentEnrollmentTest extends TestCase
         ]);
     }
 
+    public function test_home_class_fee_can_apply_to_each_class(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $course = $this->makeCourse(3500);
+
+        $this->from(route('admin.students.index'))
+            ->post(route('admin.students.store'), $this->payload($course, [
+                'is_home_class' => 1,
+                'home_fee' => '100',
+                'home_fee_mode' => Student::HOME_FEE_MODE_PER_PAYMENT,
+                'payment_plan' => Student::PAYMENT_PLAN_PER_CLASS,
+            ]))
+            ->assertRedirect(route('admin.students.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertDatabaseHas('students', [
+            'email' => 'ana.garcia@example.com',
+            'is_home_class' => 1,
+            'home_fee_amount' => 100.00,
+            'home_fee_mode' => Student::HOME_FEE_MODE_PER_PAYMENT,
+            'payment_plan' => 0,
+            'payment_subtotal' => 4300.00,
+            'payment_total' => 4300.00,
+        ]);
+    }
+
+    public function test_home_class_fee_can_apply_to_each_installment(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $course = $this->makeCourse(3500);
+
+        $this->from(route('admin.students.index'))
+            ->post(route('admin.students.store'), $this->payload($course, [
+                'is_home_class' => 1,
+                'home_fee' => '100',
+                'home_fee_mode' => Student::HOME_FEE_MODE_PER_PAYMENT,
+                'payment_plan' => 3,
+                'payment_initial' => 1300,
+            ]))
+            ->assertRedirect(route('admin.students.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertDatabaseHas('students', [
+            'email' => 'ana.garcia@example.com',
+            'home_fee_amount' => 100.00,
+            'home_fee_mode' => Student::HOME_FEE_MODE_PER_PAYMENT,
+            'payment_plan' => 3,
+            'payment_subtotal' => 3800.00,
+            'payment_total' => 3800.00,
+            'payment_initial' => 1300.00,
+        ]);
+    }
+
+    public function test_single_payment_with_per_class_home_fee_charges_the_course_now(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $course = $this->makeCourse(3500);
+
+        $this->from(route('admin.students.index'))
+            ->post(route('admin.students.store'), $this->payload($course, [
+                'is_home_class' => 1,
+                'home_fee' => '100',
+                'home_fee_mode' => Student::HOME_FEE_MODE_PER_PAYMENT,
+                'payment_plan' => Student::PAYMENT_PLAN_SINGLE,
+            ]))
+            ->assertRedirect(route('admin.students.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $student = Student::query()->where('email', 'ana.garcia@example.com')->first();
+
+        $this->assertDatabaseHas('students', [
+            'email' => 'ana.garcia@example.com',
+            'home_fee_amount' => 100.00,
+            'home_fee_mode' => Student::HOME_FEE_MODE_PER_PAYMENT,
+            'payment_plan' => 1,
+            'payment_subtotal' => 4300.00,
+            'payment_total' => 4300.00,
+            'payment_initial' => 3500.00,
+        ]);
+        $this->assertDatabaseHas('student_payments', [
+            'student_id' => $student->id,
+            'amount' => 3500.00,
+        ]);
+        $this->assertSame(800.0, $student->fresh()->load(['payments', 'course'])->balanceDue());
+        $this->assertSame(100.0, $student->fresh()->load('course')->suggestedAbonoAmount());
+    }
+
     public function test_user_without_discount_permission_cannot_apply_a_discount(): void
     {
         $role = Role::query()->where('slug', 'recepcionista')->first();
@@ -286,6 +374,66 @@ class StudentEnrollmentTest extends TestCase
         ]);
     }
 
+    public function test_per_class_plan_keeps_the_balance_until_each_class_is_paid(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $course = $this->makeCourse(4000);
+
+        $this->from(route('admin.students.index'))
+            ->post(route('admin.students.store'), $this->payload($course, [
+                'payment_plan' => Student::PAYMENT_PLAN_PER_CLASS,
+            ]))
+            ->assertRedirect(route('admin.students.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $student = Student::query()->where('email', 'ana.garcia@example.com')->first();
+
+        $this->assertNotNull($student);
+        $this->assertTrue($student->isPerClassPlan());
+        $this->assertSame(500.0, $student->amountPerClass());
+        $this->assertDatabaseHas('students', [
+            'email' => 'ana.garcia@example.com',
+            'payment_plan' => 0,
+            'payment_initial' => 0.00,
+            'payment_total' => 4000.00,
+        ]);
+        $this->assertSame(0, $student->payments()->count());
+        $this->assertSame(4000.0, $student->balanceDue());
+
+        $this->get(route('admin.students.index'))
+            ->assertOk()
+            ->assertSee('Pago por clase')
+            ->assertSee('$500.00')
+            ->assertSee('Debe $4,000.00');
+    }
+
+    public function test_per_class_plan_can_record_an_optional_first_class_payment(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $course = $this->makeCourse(4000);
+
+        $this->from(route('admin.students.index'))
+            ->post(route('admin.students.store'), $this->payload($course, [
+                'payment_plan' => Student::PAYMENT_PLAN_PER_CLASS,
+                'payment_initial' => 500,
+            ]))
+            ->assertRedirect(route('admin.students.index'));
+
+        $student = Student::query()->where('email', 'ana.garcia@example.com')->first();
+
+        $this->assertDatabaseHas('students', [
+            'email' => 'ana.garcia@example.com',
+            'payment_plan' => 0,
+            'payment_initial' => 500.00,
+            'payment_total' => 4000.00,
+        ]);
+        $this->assertDatabaseHas('student_payments', [
+            'student_id' => $student->id,
+            'amount' => 500.00,
+        ]);
+        $this->assertSame(3500.0, $student->fresh()->load('payments')->balanceDue());
+    }
+
     public function test_students_index_shows_home_class_and_payment_fields(): void
     {
         $this->actingAs(User::factory()->create());
@@ -307,6 +455,9 @@ class StudentEnrollmentTest extends TestCase
             ->assertSee('Esquina del parque, auto blanco')
             ->assertSee('data-is-home-class="1"', false)
             ->assertSee('data-home-fee="100.00"', false)
+            ->assertSee('data-home-fee-mode="total"', false)
+            ->assertSee('Cómo se aplica')
+            ->assertSee('En cada clase o abono')
             ->assertSee('data-meeting-point="Esquina del parque, auto blanco"', false);
     }
 

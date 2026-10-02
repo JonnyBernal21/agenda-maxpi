@@ -26,6 +26,7 @@ class EmailPreviewTest extends TestCase
             ->assertOk()
             ->assertSee('Correos')
             ->assertSee('Registro y horarios de clase')
+            ->assertSee('Recibo de pago')
             ->assertSee('Datos de ejemplo');
     }
 
@@ -44,6 +45,25 @@ class EmailPreviewTest extends TestCase
             ->assertDontSee('Carlos Méndez')
             ->assertSee('Términos y condiciones')
             ->assertSee('$350.00 MXN');
+    }
+
+    public function test_payment_receipt_html_preview_renders_sample_breakdown(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->get(route('admin.emails.html', ['template' => 'payment-receipt']))
+            ->assertOk()
+            ->assertSee('Recibo de pago')
+            ->assertSee('Ana García López')
+            ->assertSee('ana.garcia@example.com')
+            ->assertSee('Curso básico')
+            ->assertSee('Tarifa a domicilio')
+            ->assertSee('Pago por clase')
+            ->assertSee('$3,500.00')
+            ->assertSee('$3,600.00')
+            ->assertSee('$3,400.00')
+            ->assertSee('− $200.00', false)
+            ->assertSee('Saldo pendiente');
     }
 
     public function test_email_html_preview_uses_selected_student(): void

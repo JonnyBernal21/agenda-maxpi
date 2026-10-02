@@ -225,6 +225,9 @@ class ReservaController extends Controller
                 ],
                 'classes' => ReservaSchedulePayload::fromReservas($reservas),
                 'send_url' => route('admin.students.schedule-email', $student),
+                'receipt_url' => route('admin.students.receipt', $student),
+                'receipt_send_url' => route('admin.students.receipt-email', $student),
+                'history_url' => route('admin.students.payment-history', $student),
             ]);
         }
 

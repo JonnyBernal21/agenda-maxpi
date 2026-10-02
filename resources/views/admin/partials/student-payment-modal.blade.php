@@ -12,6 +12,7 @@
     aria-labelledby="studentPayModalLabel"
     aria-hidden="true"
     data-auto-open="{{ old('_form') === 'student-payment' ? 'true' : 'false' }}"
+    data-today-label="{{ now()->timezone(config('app.timezone'))->format('d/m/Y') }}"
 >
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content student-pay-modal">
@@ -87,17 +88,18 @@
 
                         <div class="col-md-6">
                             <label for="student_pay_date" class="form-label">Fecha</label>
-                            <input
-                                type="date"
-                                id="student_pay_date"
-                                name="paid_at"
-                                value="{{ old('paid_at', now()->toDateString()) }}"
-                                class="form-control @error('paid_at') is-invalid @enderror"
-                                required
-                            >
-                            @error('paid_at')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <div class="assign-field">
+                                <i class="bi bi-calendar3 assign-field__icon"></i>
+                                <input
+                                    type="text"
+                                    id="student_pay_date"
+                                    value="{{ now()->timezone(config('app.timezone'))->format('d/m/Y') }}"
+                                    class="form-control student-pay-modal__date"
+                                    readonly
+                                    tabindex="-1"
+                                    aria-readonly="true"
+                                >
+                            </div>
                         </div>
                     </div>
                 </div>

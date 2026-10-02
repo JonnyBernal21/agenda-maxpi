@@ -34,6 +34,10 @@
     @canany(['students.view', 'students.manage', 'students.edit'])
         @include('admin.partials.student-schedule-modal')
     @endcanany
+    @canany(['students.view', 'students.manage', 'students.edit', 'reservas.manage'])
+        @include('admin.partials.payment-receipt-modal')
+        @include('admin.partials.payment-history-modal')
+    @endcanany
     @canany(['students.manage', 'reservas.manage'])
         @include('admin.partials.assign-schedule-modal')
         @include('admin.partials.schedule-summary-modal')

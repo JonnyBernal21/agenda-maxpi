@@ -30,6 +30,7 @@
     tabindex="-1"
     aria-labelledby="assignScheduleModalLabel"
     aria-hidden="true"
+    data-bs-focus="false"
     data-auto-open="{{ $schedule ? 'true' : 'false' }}"
     data-num-classes="{{ $scheduleNumClasses }}"
     data-conflicts-url="{{ route('admin.reservas.instructor-conflicts') }}"
@@ -91,16 +92,27 @@
                         </header>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="schedule_start_date" class="form-label">Fecha de inicio</label>
-                                <div class="assign-field">
+                                <label for="schedule_start_date_display" class="form-label">Fecha de inicio</label>
+                                <div
+                                    class="assign-field js-single-date"
+                                    data-min-date="{{ $minBookableDate }}"
+                                >
                                     <i class="bi bi-calendar-event assign-field__icon"></i>
                                     <input
-                                        type="date"
+                                        type="hidden"
                                         id="schedule_start_date"
                                         name="start_date"
+                                        class="js-single-date-value"
                                         value="{{ old('start_date') }}"
-                                        min="{{ $minBookableDate }}"
-                                        class="form-control @error('start_date') is-invalid @enderror"
+                                    >
+                                    <input
+                                        type="text"
+                                        id="schedule_start_date_display"
+                                        class="form-control js-single-date-display @error('start_date') is-invalid @enderror"
+                                        value="{{ old('start_date') ? \Illuminate\Support\Carbon::parse(old('start_date'))->format('d/m/Y') : '' }}"
+                                        placeholder="Selecciona un día"
+                                        autocomplete="off"
+                                        readonly
                                         required
                                     >
                                 </div>

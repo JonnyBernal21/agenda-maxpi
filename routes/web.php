@@ -70,7 +70,8 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::put('/admin/courses/{course}', [CourseController::class, 'update'])->name('admin.courses.update');
     Route::delete('/admin/courses/{course}', [CourseController::class, 'destroy'])->name('admin.courses.destroy');
 
-    Route::get('/admin/ventas', [AdminSaleController::class, 'index'])->name('admin.sales.index');
+    Route::redirect('/admin/ventas', '/admin/ingresos')->name('admin.sales.legacy');
+    Route::get('/admin/ingresos', [AdminSaleController::class, 'index'])->name('admin.sales.index');
     Route::get('/admin/gastos', [AdminExpenseController::class, 'index'])->name('admin.expenses.index');
     Route::post('/admin/expenses', [ExpenseController::class, 'store'])->name('admin.expenses.store');
     Route::put('/admin/expenses/{expense}', [ExpenseController::class, 'update'])->name('admin.expenses.update');
@@ -84,6 +85,9 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::put('/admin/students/{student}', [StudentController::class, 'update'])->name('admin.students.update');
     Route::delete('/admin/students/{student}', [StudentController::class, 'destroy'])->name('admin.students.destroy');
     Route::post('/admin/students/{student}/enviar-horarios', [StudentController::class, 'sendSchedule'])->name('admin.students.schedule-email');
+    Route::get('/admin/students/{student}/recibo', [StudentController::class, 'receipt'])->name('admin.students.receipt');
+    Route::post('/admin/students/{student}/enviar-recibo', [StudentController::class, 'sendReceipt'])->name('admin.students.receipt-email');
+    Route::get('/admin/students/{student}/historial-pagos', [StudentController::class, 'paymentHistory'])->name('admin.students.payment-history');
     Route::post('/admin/students/{student}/abonos', [StudentController::class, 'storePayment'])->name('admin.students.payments.store');
     Route::post('/admin/reservas', [AdminReservaController::class, 'store'])->name('admin.reservas.store');
     Route::post('/admin/reservas/horarios', [AdminReservaController::class, 'storeSchedule'])->name('admin.reservas.schedule');

@@ -80,7 +80,7 @@
                     <li class="nav-item">
                         <a class="nav-link @if(request()->routeIs('admin.sales.*')) active @endif" href="{{ route('admin.sales.index') }}">
                             <i class="bi bi-cash-stack"></i>
-                            <span>Ventas</span>
+                            <span>Ingresos</span>
                         </a>
                     </li>
                 @endcan

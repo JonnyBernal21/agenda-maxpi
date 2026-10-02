@@ -86,13 +86,23 @@
                 </button>
                 <button
                     type="button"
-                    class="btn btn-brand d-flex align-items-center gap-2"
+                    class="btn btn-brand-outline d-flex align-items-center gap-2"
                     id="scheduleSummaryEmail"
                     title="Enviar horarios por correo"
                     aria-label="Enviar horarios por correo"
                 >
                     <i class="bi bi-envelope"></i>
                     Enviar
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-brand d-flex align-items-center gap-2"
+                    id="scheduleSummaryNextStep"
+                    title="Continuar al recibo de pago"
+                    aria-label="Siguiente, recibo de pago"
+                >
+                    Siguiente
+                    <i class="bi bi-chevron-right"></i>
                 </button>
             </div>
         </div>

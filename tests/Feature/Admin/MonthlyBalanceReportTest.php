@@ -41,7 +41,7 @@ class MonthlyBalanceReportTest extends TestCase
 
         $this->get(route('admin.reports.index', ['year' => 2026]))
             ->assertOk()
-            ->assertSee('Reporte de ventas y gastos por mes')
+            ->assertSee('Reporte de ingresos y gastos por mes')
             ->assertSee('Estadísticas mensuales')
             ->assertSee('Mayo')
             ->assertSee('$10,631.00')
@@ -77,13 +77,13 @@ class MonthlyBalanceReportTest extends TestCase
         $this->get(route('admin.reports.index'))
             ->assertOk()
             ->assertSeeInOrder([
-                'Ventas del día',
+                'Ingresos del día',
                 '$1,875.00',
                 'Gastos del día',
                 '$420.00',
                 'Total del día',
                 'Clases del día',
-                'Reporte de ventas y gastos por mes',
+                'Reporte de ingresos y gastos por mes',
             ])
             ->assertDontSee('Pagos al registrar')
             ->assertDontSee('>Abonos</p>', false);

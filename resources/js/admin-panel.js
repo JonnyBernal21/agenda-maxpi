@@ -1,8 +1,11 @@
 import * as bootstrap from 'bootstrap';
 import { confirmSoftDelete, showBookingError, showBookingSuccess } from './booking-confirm';
 import { bindStudentEnrollment } from './student-enrollment';
+import { bindSingleDatePickers } from './date-range-picker';
 
 let openScheduleSummary = () => {};
+let openPaymentReceipt = () => {};
+let openPaymentHistory = () => {};
 
 const WEEKDAY_NAMES = {
     1: 'lunes',
@@ -169,10 +172,16 @@ const initAssignSchedule = () => {
             return;
         }
 
-        dateInput.min = minStartDate;
+        const display = document.getElementById('schedule_start_date_display');
 
         if (dateInput.value && dateInput.value < minStartDate) {
             dateInput.value = '';
+
+            if (display) {
+                display.value = '';
+            }
+
+            dateInput._litepicker?.clearSelection();
         }
     };
 
@@ -632,6 +641,11 @@ const initAssignSchedule = () => {
     applyMinStartDate();
     updateStartHint();
     refreshPreview();
+    bindSingleDatePickers(modalEl);
+
+    modalEl.addEventListener('hidden.bs.modal', () => {
+        dateInput?._litepicker?.hide();
+    });
 };
 
 const initUppercaseInputs = () => {
@@ -928,6 +942,333 @@ const weekMonday = (date) => addCalendarDays(date, -((date.getDay() + 6) % 7));
 
 const weekSunday = (date) => addCalendarDays(weekMonday(date), 6);
 
+const initPaymentHistory = () => {
+    const modalEl = document.getElementById('paymentHistoryModal');
+
+    if (!modalEl) {
+        return;
+    }
+
+    const metaEl = document.getElementById('paymentHistoryMeta');
+    const summaryEl = document.getElementById('paymentHistorySummary');
+    const timelineEl = document.getElementById('paymentHistoryTimeline');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    const state = { onHidden: null };
+
+    const emptyHtml = `
+        <div class="pay-timeline__empty">
+            <i class="bi bi-cash-stack"></i>
+            <p>Aún no hay pagos registrados.</p>
+        </div>
+    `;
+
+    const summaryHtml = (payload) => `
+        <div class="pay-history-summary__item">
+            <span>Total</span>
+            <strong>${escapeHtml(payload.total_label || '$0.00')}</strong>
+        </div>
+        <div class="pay-history-summary__item">
+            <span>Abonado</span>
+            <strong>${escapeHtml(payload.paid_label || '$0.00')}</strong>
+        </div>
+        <div class="pay-history-summary__item ${payload.is_paid ? 'is-paid' : 'is-due'}">
+            <span>${payload.is_paid ? 'Estado' : 'Saldo'}</span>
+            <strong>${payload.is_paid ? 'Liquidado' : escapeHtml(payload.balance_label || '$0.00')}</strong>
+        </div>
+    `;
+
+    const itemHtml = (item) => `
+        <article class="pay-timeline__item ${item.is_full ? 'is-full' : 'is-abono'}">
+            <span class="pay-timeline__dot" aria-hidden="true"></span>
+            <div class="pay-timeline__card">
+                <div class="pay-timeline__top">
+                    <span class="pay-timeline__type">${escapeHtml(item.type)}</span>
+                    <span class="pay-timeline__amount">${escapeHtml(item.amount_label)}</span>
+                </div>
+                <p class="pay-timeline__meta mb-0">
+                    ${escapeHtml(item.date)} · ${escapeHtml(item.method)}
+                </p>
+                <p class="pay-timeline__balance mb-0">
+                    ${item.is_full || item.balance_after <= 0
+                        ? 'Curso liquidado'
+                        : `Saldo ${escapeHtml(item.balance_after_label)}`}
+                </p>
+            </div>
+        </article>
+    `;
+
+    const pendingHtml = (payload) => `
+        <article class="pay-timeline__item is-pending">
+            <span class="pay-timeline__dot" aria-hidden="true"></span>
+            <div class="pay-timeline__card">
+                <div class="pay-timeline__top">
+                    <span class="pay-timeline__type">Saldo pendiente</span>
+                    <span class="pay-timeline__amount">${escapeHtml(payload.balance_label || '$0.00')}</span>
+                </div>
+                <p class="pay-timeline__meta mb-0">Aún no liquidado</p>
+            </div>
+        </article>
+    `;
+
+    const render = (payload) => {
+        const payments = Array.isArray(payload.payments) ? payload.payments : [];
+
+        if (metaEl) {
+            metaEl.textContent = [payload.student_name, payload.course, payload.plan]
+                .filter(Boolean)
+                .join(' · ');
+        }
+
+        if (summaryEl) {
+            summaryEl.innerHTML = summaryHtml(payload);
+            summaryEl.hidden = false;
+        }
+
+        if (!timelineEl) {
+            return;
+        }
+
+        if (payments.length === 0) {
+            timelineEl.innerHTML = emptyHtml;
+            return;
+        }
+
+        timelineEl.innerHTML = payments.map(itemHtml).join('') + (payload.is_paid ? '' : pendingHtml(payload));
+    };
+
+    openPaymentHistory = async (payload = {}) => {
+        const url = payload.history_url || payload.url || '';
+        state.onHidden = typeof payload.onHidden === 'function' ? payload.onHidden : null;
+
+        if (metaEl) {
+            metaEl.textContent = payload.name || payload.student?.name || 'Alumno';
+        }
+
+        if (summaryEl) {
+            summaryEl.hidden = true;
+            summaryEl.innerHTML = '';
+        }
+
+        if (timelineEl) {
+            timelineEl.innerHTML = '<p class="text-muted small mb-0">Cargando historial…</p>';
+        }
+
+        modal.show();
+
+        if (!url) {
+            if (timelineEl) {
+                timelineEl.innerHTML = emptyHtml;
+            }
+            return;
+        }
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(data.message || 'No se pudo cargar el historial.');
+            }
+
+            render(data);
+        } catch {
+            if (timelineEl) {
+                timelineEl.innerHTML =
+                    '<p class="text-danger small mb-0">No se pudo cargar el historial de pagos.</p>';
+            }
+        }
+    };
+
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('.js-payment-history');
+
+        if (!button) {
+            return;
+        }
+
+        event.preventDefault();
+        openPaymentHistory({
+            history_url: button.dataset.historyUrl,
+            name: button.dataset.studentName,
+        });
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', () => {
+        const callback = state.onHidden;
+        state.onHidden = null;
+        callback?.();
+    });
+};
+
+const initPaymentReceipt = () => {
+    const modalEl = document.getElementById('paymentReceiptModal');
+
+    if (!modalEl) {
+        return;
+    }
+
+    const iframe = document.getElementById('paymentReceiptFrame');
+    const metaEl = document.getElementById('paymentReceiptMeta');
+    const emailBtn = document.getElementById('paymentReceiptEmail');
+    const printBtn = document.getElementById('paymentReceiptPrint');
+    const historyBtn = document.getElementById('paymentReceiptHistory');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const state = {
+        htmlUrl: '',
+        sendUrl: '',
+        historyUrl: '',
+        email: '',
+        sending: false,
+        onHidden: null,
+        studentName: '',
+    };
+
+    const applySendButton = () => {
+        if (!emailBtn) {
+            return;
+        }
+
+        const canSend = Boolean(state.sendUrl && state.email);
+        emailBtn.disabled = !canSend;
+        emailBtn.title = canSend
+            ? `Enviar horarios y recibo a ${state.email}`
+            : 'El alumno no tiene un correo para enviar el recibo';
+    };
+
+    const applyHistoryButton = () => {
+        if (!historyBtn) {
+            return;
+        }
+
+        historyBtn.disabled = !state.historyUrl;
+        historyBtn.title = state.historyUrl
+            ? 'Ver historial de pagos'
+            : 'No hay historial disponible';
+    };
+
+    openPaymentReceipt = (payload = {}) => {
+        state.htmlUrl = payload.receipt_url || payload.htmlUrl || '';
+        state.sendUrl = payload.receipt_send_url || payload.sendUrl || '';
+        state.historyUrl = payload.history_url || payload.historyUrl || '';
+        state.email = payload.email || payload.student?.email || '';
+        state.onHidden = typeof payload.onHidden === 'function' ? payload.onHidden : null;
+        state.studentName = payload.student?.name || payload.name || '';
+
+        if (metaEl) {
+            metaEl.textContent = [state.studentName, state.email].filter(Boolean).join(' · ') || 'Vista previa del recibo';
+        }
+
+        if (iframe) {
+            iframe.src = state.htmlUrl || 'about:blank';
+        }
+
+        applySendButton();
+        applyHistoryButton();
+        modal.show();
+    };
+
+    printBtn?.addEventListener('click', () => {
+        iframe?.contentWindow?.focus();
+        iframe?.contentWindow?.print();
+    });
+
+    historyBtn?.addEventListener('click', () => {
+        if (!state.historyUrl) {
+            return;
+        }
+
+        const snapshot = {
+            receipt_url: state.htmlUrl,
+            receipt_send_url: state.sendUrl,
+            history_url: state.historyUrl,
+            email: state.email,
+            student: { name: state.studentName, email: state.email },
+            onHidden: state.onHidden,
+        };
+        state.onHidden = null;
+
+        modalEl.addEventListener(
+            'hidden.bs.modal',
+            () => {
+                openPaymentHistory({
+                    history_url: snapshot.history_url,
+                    name: snapshot.student?.name,
+                    onHidden: () => openPaymentReceipt(snapshot),
+                });
+            },
+            { once: true }
+        );
+        modal.hide();
+    });
+
+    emailBtn?.addEventListener('click', async () => {
+        if (state.sending || !state.sendUrl) {
+            return;
+        }
+
+        const originalHtml = emailBtn.innerHTML;
+        state.sending = true;
+        emailBtn.disabled = true;
+        emailBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+
+        try {
+            const response = await fetch(state.sendUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Content-Type': 'application/json',
+                },
+                body: '{}',
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                await showBookingError(payload.message || 'No se pudieron enviar el recibo y los horarios por correo.');
+                return;
+            }
+
+            state.onHidden = null;
+            modalEl.addEventListener(
+                'hidden.bs.modal',
+                async () => {
+                    await showBookingSuccess(
+                        payload.message ||
+                            `Horarios y recibo enviados por correo a ${payload.email || state.email || 'el alumno'}.`,
+                        'Registro exitoso'
+                    );
+                    window.location.reload();
+                },
+                { once: true }
+            );
+            modal.hide();
+        } catch {
+            await showBookingError('No se pudieron enviar el recibo y los horarios por correo. Intenta de nuevo.');
+        } finally {
+            state.sending = false;
+            emailBtn.innerHTML = originalHtml;
+            applySendButton();
+        }
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', () => {
+        if (iframe) {
+            iframe.src = 'about:blank';
+        }
+
+        const callback = state.onHidden;
+        state.onHidden = null;
+        callback?.();
+    });
+};
+
 const initScheduleSummary = () => {
     const modalEl = document.getElementById('scheduleSummaryModal');
 
@@ -944,6 +1285,7 @@ const initScheduleSummary = () => {
     const nextBtn = document.getElementById('scheduleSummaryNext');
     const printMonthsEl = document.getElementById('scheduleSummaryPrintMonths');
     const printBtn = document.getElementById('scheduleSummaryPrint');
+    const nextStepBtn = document.getElementById('scheduleSummaryNextStep');
     const emailBtn = document.getElementById('scheduleSummaryEmail');
     const whatsappBtn = document.getElementById('scheduleSummaryWhatsapp');
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -952,6 +1294,9 @@ const initScheduleSummary = () => {
         classes: [],
         student: null,
         sendUrl: '',
+        receiptUrl: '',
+        receiptSendUrl: '',
+        historyUrl: '',
         year: new Date().getFullYear(),
         month: new Date().getMonth(),
         sending: false,
@@ -1144,6 +1489,33 @@ const initScheduleSummary = () => {
                 ? `Enviar a ${student.phone}`
                 : 'El alumno no tiene un teléfono válido para WhatsApp';
         }
+
+        if (nextStepBtn) {
+            const hasReceipt = Boolean(state.receiptUrl);
+            nextStepBtn.disabled = !hasReceipt;
+            nextStepBtn.title = hasReceipt
+                ? 'Continuar al recibo de pago'
+                : 'No hay recibo disponible';
+        }
+    };
+
+    const showReceiptPreview = ({ reopenSummary = false } = {}) => {
+        if (!state.receiptUrl) {
+            return;
+        }
+
+        openPaymentReceipt({
+            receipt_url: state.receiptUrl,
+            receipt_send_url: state.receiptSendUrl,
+            history_url: state.historyUrl,
+            email: state.student?.email,
+            student: state.student,
+            onHidden: reopenSummary
+                ? () => {
+                      modal.show();
+                  }
+                : null,
+        });
     };
 
     const buildWhatsappMessage = () => {
@@ -1208,6 +1580,21 @@ const initScheduleSummary = () => {
         requestAnimationFrame(() => window.print());
     });
 
+    nextStepBtn?.addEventListener('click', () => {
+        if (!state.receiptUrl) {
+            return;
+        }
+
+        modalEl.addEventListener(
+            'hidden.bs.modal',
+            () => {
+                showReceiptPreview({ reopenSummary: true });
+            },
+            { once: true }
+        );
+        modal.hide();
+    });
+
     whatsappBtn?.addEventListener('click', async () => {
         const number = state.student?.whatsapp;
 
@@ -1249,16 +1636,15 @@ const initScheduleSummary = () => {
                 return;
             }
 
-            const email = payload.email || state.student?.email || 'el alumno';
-            modalEl.addEventListener(
-                'hidden.bs.modal',
-                async () => {
-                    await showBookingSuccess(`Horarios enviados por correo a ${email}.`, 'Registro exitoso');
-                    window.location.reload();
-                },
-                { once: true }
+            state.receiptUrl = payload.receipt_url || state.receiptUrl;
+            state.receiptSendUrl = payload.receipt_send_url || state.receiptSendUrl;
+            state.historyUrl = payload.history_url || state.historyUrl;
+            renderHeader();
+
+            await showBookingSuccess(
+                `Horarios enviados por correo a ${payload.email || state.student?.email || 'el alumno'}.`,
+                'Registro exitoso'
             );
-            modal.hide();
         } catch {
             await showBookingError('No se pudieron enviar los horarios por correo. Intenta de nuevo.');
         } finally {
@@ -1272,6 +1658,9 @@ const initScheduleSummary = () => {
         state.classes = Array.isArray(payload.classes) ? payload.classes : [];
         state.student = payload.student || {};
         state.sendUrl = payload.send_url || '';
+        state.receiptUrl = payload.receipt_url || '';
+        state.receiptSendUrl = payload.receipt_send_url || '';
+        state.historyUrl = payload.history_url || '';
 
         const first = state.classes[0]?.date ? parseIso(state.classes[0].date) : new Date();
         state.year = first.getFullYear();
@@ -1292,6 +1681,7 @@ const initStudentAdmin = () => {
     const scheduleModal = scheduleModalEl ? bootstrap.Modal.getOrCreateInstance(scheduleModalEl) : null;
     const studentModal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
     let openingStudentEdit = false;
+    let studentWizard = null;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
     const setActionBusy = (button, busy) => {
@@ -1370,6 +1760,22 @@ const initStudentAdmin = () => {
 
             if (!response.ok) {
                 await showBookingError(payload.message || 'No se pudieron enviar los horarios por correo.');
+                return;
+            }
+
+            const receiptUrl = payload.receipt_url || button.dataset.receiptUrl;
+
+            if (receiptUrl) {
+                openPaymentReceipt({
+                    receipt_url: receiptUrl,
+                    receipt_send_url: payload.receipt_send_url || button.dataset.receiptSendUrl,
+                    history_url: payload.history_url || button.dataset.historyUrl,
+                    email: payload.email || email,
+                    student: {
+                        name: button.dataset.studentName,
+                        email: payload.email || email,
+                    },
+                });
                 return;
             }
 
@@ -1519,7 +1925,6 @@ const initStudentAdmin = () => {
 
         const title = document.getElementById('studentFormTitle');
         const icon = document.getElementById('studentFormIcon');
-        const hint = document.getElementById('studentFormHint');
         const kicker = document.getElementById('studentFormKicker');
         const submitLabel = document.getElementById('studentFormSubmitLabel');
 
@@ -1532,10 +1937,8 @@ const initStudentAdmin = () => {
         }
 
         if (kicker) {
-            kicker.textContent = 'Registro en 4 pasos';
+            kicker.textContent = 'Paso 1 de 4';
         }
-
-        hint?.classList.remove('d-none');
 
         if (submitLabel) {
             submitLabel.textContent = 'Guardar alumno';
@@ -1548,6 +1951,8 @@ const initStudentAdmin = () => {
             clearStudentInvalid();
             enrollment.resetEnrollment();
         }
+
+        studentWizard?.reset();
     };
 
     const setStudentEditMode = (studentId) => {
@@ -1567,7 +1972,6 @@ const initStudentAdmin = () => {
 
         const title = document.getElementById('studentFormTitle');
         const icon = document.getElementById('studentFormIcon');
-        const hint = document.getElementById('studentFormHint');
         const kicker = document.getElementById('studentFormKicker');
         const submitLabel = document.getElementById('studentFormSubmitLabel');
 
@@ -1580,16 +1984,15 @@ const initStudentAdmin = () => {
         }
 
         if (kicker) {
-            kicker.textContent = 'Actualiza la ficha del alumno';
+            kicker.textContent = 'Paso 1 de 5';
         }
-
-        hint?.classList.add('d-none');
 
         if (submitLabel) {
             submitLabel.textContent = 'Guardar cambios';
         }
 
         extraSection?.classList.remove('d-none');
+        studentWizard?.reset();
     };
 
     const fillStudentForm = (button) => {
@@ -1620,6 +2023,7 @@ const initStudentAdmin = () => {
         renderExtraRows(Array.isArray(extras) ? extras : []);
         enrollment.fillEnrollment(button);
         clearStudentInvalid();
+        studentWizard?.reset();
     };
 
     const renderSchedule = (payload) => {
@@ -1769,12 +2173,140 @@ const initStudentAdmin = () => {
     extraAddBtn?.addEventListener('click', () => {
         extraSection?.classList.remove('d-none');
         addExtraRow();
+        studentWizard?.refresh();
     });
 
     form?.querySelector('[name="course_id"]')?.addEventListener('change', () => {
         updateExtraSummary();
         enrollment.refreshPayment();
     });
+
+    const bindStudentWizard = () => {
+        const panes = [...(form?.querySelectorAll('[data-wizard-step]') || [])];
+        const navItems = [...(document.querySelectorAll('#studentWizardNav [data-wizard-nav]') || [])];
+        const backBtn = document.getElementById('studentWizardBack');
+        const nextBtn = document.getElementById('studentWizardNext');
+        const submitBtn = document.getElementById('studentFormSubmit');
+        const kicker = document.getElementById('studentFormKicker');
+        let index = 0;
+
+        const visiblePanes = () => panes.filter((pane) => !pane.classList.contains('d-none'));
+
+        const showStep = (nextIndex) => {
+            const visible = visiblePanes();
+
+            if (!visible.length) {
+                return;
+            }
+
+            index = Math.max(0, Math.min(nextIndex, visible.length - 1));
+            const current = visible[index];
+            const isLast = index === visible.length - 1;
+            const isFirst = index === 0;
+
+            panes.forEach((pane) => pane.classList.toggle('is-active', pane === current));
+            navItems.forEach((item) => {
+                const pane = panes.find((node) => node.dataset.wizardStep === item.dataset.wizardNav);
+                const navIndex = visible.indexOf(pane);
+                item.classList.toggle('d-none', !pane || pane.classList.contains('d-none'));
+                item.classList.toggle('is-current', navIndex === index);
+                item.classList.toggle('is-done', navIndex >= 0 && navIndex < index);
+            });
+
+            backBtn?.classList.toggle('d-none', isFirst);
+            nextBtn?.classList.toggle('d-none', isLast);
+
+            if (submitBtn) {
+                submitBtn.classList.toggle('d-none', !isLast);
+                submitBtn.classList.toggle('d-inline-flex', isLast);
+            }
+
+            if (kicker) {
+                kicker.textContent = `Paso ${index + 1} de ${visible.length}`;
+            }
+
+            if (current?.dataset.wizardStep === 'course') {
+                enrollment.revealHomeMap?.();
+            }
+
+            if (current?.dataset.wizardStep === 'pay') {
+                enrollment.refreshPayment();
+            }
+        };
+
+        const validateCurrent = () => {
+            const current = visiblePanes()[index];
+
+            if (!current) {
+                return true;
+            }
+
+            const fields = [...current.querySelectorAll('input, select, textarea')].filter(
+                (field) => !field.disabled && field.name && field.type !== 'hidden'
+            );
+
+            for (const field of fields) {
+                if (!field.checkValidity()) {
+                    field.reportValidity();
+                    field.focus();
+                    return false;
+                }
+            }
+
+            return true;
+        };
+
+        const goNext = () => {
+            if (!validateCurrent()) {
+                return;
+            }
+
+            showStep(index + 1);
+        };
+
+        nextBtn?.addEventListener('click', goNext);
+        backBtn?.addEventListener('click', () => showStep(index - 1));
+
+        navItems.forEach((item) => {
+            item.addEventListener('click', () => {
+                const pane = panes.find((node) => node.dataset.wizardStep === item.dataset.wizardNav);
+                const navIndex = visiblePanes().indexOf(pane);
+
+                if (navIndex >= 0 && navIndex < index) {
+                    showStep(navIndex);
+                }
+            });
+        });
+
+        form?.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' || event.target?.tagName === 'TEXTAREA' || event.defaultPrevented) {
+                return;
+            }
+
+            if (index < visiblePanes().length - 1) {
+                event.preventDefault();
+                goNext();
+            }
+        });
+
+        return {
+            reset: () => showStep(0),
+            refresh: () => showStep(index),
+            showStepKey(step) {
+                const pane = panes.find((node) => node.dataset.wizardStep === step);
+                const navIndex = visiblePanes().indexOf(pane);
+                showStep(navIndex >= 0 ? navIndex : 0);
+            },
+        };
+    };
+
+    studentWizard = bindStudentWizard();
+
+    if (modalEl?.dataset.wizardErrorStep) {
+        studentWizard.showStepKey(modalEl.dataset.wizardErrorStep);
+    } else {
+        studentWizard.reset();
+    }
 
     modalEl?.addEventListener('hidden.bs.modal', () => {
         if (openingStudentEdit) {
@@ -2692,16 +3224,18 @@ const initStudentPay = () => {
         }
 
         if (amountInput) {
-            amountInput.value = '';
+            const suggested = Number(button.dataset.perClassAmount || 0);
+            const balance = Number(button.dataset.balance || 0);
             amountInput.max = button.dataset.balance || '';
+            amountInput.value = suggested > 0 ? Math.min(suggested, balance || suggested).toFixed(2) : '';
         }
 
         if (methodInput) {
             methodInput.value = button.dataset.paymentMethod || '';
         }
 
-        if (dateInput && !dateInput.value) {
-            dateInput.value = new Date().toISOString().slice(0, 10);
+        if (dateInput) {
+            dateInput.value = modalEl.dataset.todayLabel || dateInput.value;
         }
     };
 
@@ -2740,6 +3274,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'scheduleClassModal', form: 'reserva' },
         { id: 'assignScheduleModal', form: 'schedule' },
         { id: 'scheduleSummaryModal' },
+        { id: 'paymentReceiptModal' },
+        { id: 'paymentHistoryModal' },
         { id: 'studentScheduleModal' },
         { id: 'studentPayModal', form: 'student-payment' },
     ];
@@ -2771,6 +3307,8 @@ document.addEventListener('DOMContentLoaded', () => {
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
     });
 
+    initPaymentHistory();
+    initPaymentReceipt();
     initScheduleSummary();
     initAssignSchedule();
     initUppercaseInputs();
