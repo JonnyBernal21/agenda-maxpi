@@ -456,6 +456,8 @@ class StudentEnrollmentTest extends TestCase
             ->assertSee('data-is-home-class="1"', false)
             ->assertSee('data-home-fee="100.00"', false)
             ->assertSee('data-home-fee-mode="total"', false)
+            ->assertSee('js-assign-student-schedule', false)
+            ->assertSee('Asignar horarios')
             ->assertSee('Cómo se aplica')
             ->assertSee('En cada clase o abono')
             ->assertSee('data-meeting-point="Esquina del parque, auto blanco"', false);

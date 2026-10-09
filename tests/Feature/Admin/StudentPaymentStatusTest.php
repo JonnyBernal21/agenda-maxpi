@@ -45,6 +45,7 @@ class StudentPaymentStatusTest extends TestCase
             ->assertSee('name="amount"', false)
             ->assertSee('name="payment_method"', false)
             ->assertDontSee('name="paid_at"', false)
+            ->assertDontSee('js-assign-student-schedule', false)
             ->assertDontSee('>Liquidado</span>', false);
     }
 

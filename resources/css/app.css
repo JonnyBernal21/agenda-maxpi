@@ -158,10 +158,213 @@ body {
     text-decoration: none;
 }
 
+button.admin-navbar__icon-link {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+}
+
 .admin-navbar__icon-link:hover,
-.admin-navbar__icon-link.is-active {
+.admin-navbar__icon-link.is-active,
+.admin-navbar__icon-link.show {
     color: #fff;
     background: rgba(255, 255, 255, 0.1);
+}
+
+.admin-notifications {
+    position: relative;
+}
+
+.admin-notifications__toggle {
+    position: relative;
+}
+
+.admin-notifications__badge {
+    position: absolute;
+    top: 0.05rem;
+    right: 0.05rem;
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 0.22rem;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.58rem;
+    font-weight: 700;
+    line-height: 1rem;
+    text-align: center;
+}
+
+.admin-notifications__menu {
+    width: min(24.5rem, calc(100vw - 1.5rem));
+    padding: 0;
+    margin-top: 0.45rem;
+    border: 1px solid var(--brand-200);
+    border-radius: 0.9rem;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+    overflow: hidden;
+}
+
+.admin-notifications__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem 0.7rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.admin-notifications__head strong {
+    display: block;
+    font-size: 0.92rem;
+    color: #0f172a;
+}
+
+.admin-notifications__kicker {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.admin-notifications__read-all {
+    padding: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.admin-notifications__list {
+    max-height: 24rem;
+    overflow: auto;
+}
+
+.admin-notifications__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.75rem 1rem;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.admin-notifications__item {
+    display: flex;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fff;
+    color: inherit;
+    text-align: left;
+    text-decoration: none;
+}
+
+.admin-notifications__item:hover {
+    background: #f8fafc;
+    color: inherit;
+}
+
+.admin-notifications__item.is-unread {
+    background: #f0f9ff;
+}
+
+.admin-notifications__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.6rem;
+    flex: none;
+    font-size: 0.95rem;
+}
+
+.admin-notifications__icon.is-success {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.admin-notifications__icon.is-info {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.admin-notifications__icon.is-warning {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.admin-notifications__body {
+    min-width: 0;
+    flex: 1;
+}
+
+.admin-notifications__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.admin-notifications__time {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.admin-notifications__text {
+    margin: 0.2rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: #334155;
+}
+
+.admin-notifications__people {
+    margin: 0.45rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-notifications__people li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.2rem 0;
+    font-size: 0.74rem;
+    color: #334155;
+}
+
+.admin-notifications__people strong {
+    display: block;
+    font-size: inherit;
+}
+
+.admin-notifications__people small {
+    display: block;
+    font-size: 0.68rem;
+    color: #64748b;
+}
+
+.admin-notifications__people span {
+    color: #c2410c;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.admin-notifications__more {
+    margin: 0.25rem 0 0;
+    font-size: 0.72rem;
+    color: #64748b;
 }
 
 .admin-navbar__user {
@@ -1972,6 +2175,33 @@ body {
     gap: 0.4rem;
 }
 
+.student-schedule-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+}
+
+.student-assign-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.22rem 0.65rem;
+    border-radius: 999px;
+    background: #2563eb;
+    border: 1px solid #1d4ed8;
+    color: #fff;
+}
+
+.student-assign-btn:hover,
+.student-assign-btn:focus {
+    background: #1d4ed8;
+    border-color: #1e40af;
+    color: #fff;
+}
+
 .student-abonar-btn {
     display: inline-flex;
     align-items: center;
@@ -2340,6 +2570,13 @@ body {
 
 .student-schedule-table tbody tr.is-past td {
     color: #94a3b8;
+}
+
+.student-schedule-table .schedule-assignment-select {
+    min-width: 10.5rem;
+    max-width: 16rem;
+    font-size: 0.78rem;
+    color: var(--brand-800);
 }
 
 .student-schedule-table tbody tr.is-cancelled td {
@@ -3065,6 +3302,30 @@ div.dataTables_wrapper .dataTables_filter label {
 .student-modal__footer {
     background: #ecfdf5;
     border-top: 1px solid #bbf7d0;
+}
+
+.schedule-date-picker {
+    min-width: 8.75rem;
+    max-width: 10.75rem;
+}
+
+.schedule-date-picker .assign-field__icon {
+    left: 0.55rem;
+    font-size: 0.85rem;
+}
+
+.schedule-date-picker.assign-field .form-control {
+    padding-left: 1.9rem;
+}
+
+.schedule-date-select {
+    min-width: 8.75rem;
+    max-width: 10.75rem;
+    font-size: 0.8rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    cursor: pointer;
+    background: #fff;
 }
 
 .schedule-time-select {

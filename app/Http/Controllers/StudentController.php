@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
+use App\Models\Instructor;
 use App\Models\Reservas;
 use App\Models\Student;
+use App\Models\Vehicle;
 use App\Models\StudentExtraClass;
 use App\Services\StudentMailService;
 use App\Support\DiscountInput;
@@ -305,10 +307,11 @@ class StudentController extends Controller
             ->with('success', "Se eliminó a {$name} de la lista.");
     }
 
-    public function schedule(Student $student): JsonResponse
+    public function schedule(Request $request, Student $student): JsonResponse
     {
         $student->load('course');
         $today = now()->toDateString();
+        $canEdit = $request->user()?->isAdmin() ?? false;
 
         $reservas = $student->reservas()
             ->with(['instructor', 'vehicle'])
@@ -320,11 +323,12 @@ class StudentController extends Controller
         $allowed = $student->allowedClassesCount();
         $booked = $reservas->where('status', '!=', 'cancelada')->count();
 
-        $classes = $reservas->map(function (Reservas $reserva) use ($today) {
+        $classes = $reservas->map(function (Reservas $reserva) use ($today, $canEdit) {
             $date = $reserva->date instanceof \DateTimeInterface
                 ? $reserva->date->format('Y-m-d')
                 : substr((string) $reserva->date, 0, 10);
             $time = Reservas::normalizeTime((string) $reserva->time);
+            $editable = $canEdit && in_array($reserva->status, ['pendiente', 'confirmada'], true);
 
             return [
                 'id' => $reserva->id,
@@ -335,10 +339,14 @@ class StudentController extends Controller
                 'status' => $reserva->status,
                 'status_label' => ReservaStatus::label($reserva->status),
                 'status_class' => ReservaStatus::badgeClass($reserva->status),
+                'instructor_id' => $reserva->instructor_id ? (int) $reserva->instructor_id : null,
                 'instructor' => $reserva->instructor?->fullName() ?: '—',
+                'vehicle_id' => $reserva->vehicle_id ? (int) $reserva->vehicle_id : null,
                 'vehicle' => $reserva->vehicle
                     ? trim($reserva->vehicle->modelo.' ('.$reserva->vehicle->plate.')')
                     : '—',
+                'can_edit' => $editable,
+                'update_url' => $editable ? route('admin.reservas.assignment', $reserva) : null,
             ];
         });
 
@@ -349,6 +357,19 @@ class StudentController extends Controller
             'allowed' => $allowed,
             'booked' => $booked,
             'remaining' => max(0, $allowed - $booked),
+            'can_edit_assignment' => $canEdit,
+            'instructors' => $canEdit
+                ? Instructor::query()->orderBy('name')->get()->map(fn (Instructor $instructor) => [
+                    'id' => $instructor->id,
+                    'name' => $instructor->fullName(),
+                ])->values()
+                : [],
+            'vehicles' => $canEdit
+                ? Vehicle::query()->orderBy('modelo')->get()->map(fn (Vehicle $vehicle) => [
+                    'id' => $vehicle->id,
+                    'label' => trim($vehicle->modelo.' ('.$vehicle->plate.')'),
+                ])->values()
+                : [],
             'classes' => $classes,
         ]);
     }

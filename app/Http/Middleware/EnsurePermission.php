@@ -37,6 +37,12 @@ class EnsurePermission
             str_starts_with($route, 'admin.settings.permissions') => 'permissions.manage',
             str_starts_with($route, 'admin.settings') => 'settings.edit',
             str_starts_with($route, 'admin.emails') => 'emails.view',
+            str_starts_with($route, 'admin.notifications') => [
+                'students.view',
+                'students.manage',
+                'students.edit',
+                'sales.view',
+            ],
             in_array($route, ['admin.students.index', 'admin.students.search'], true) => [
                 'students.view',
                 'students.manage',

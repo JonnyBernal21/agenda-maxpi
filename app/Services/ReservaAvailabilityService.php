@@ -33,6 +33,7 @@ class ReservaAvailabilityService
         ?int $vehicleId = null,
         ?int $studentId = null,
         ?int $excludeReservaId = null,
+        bool $ignoreCutoff = false,
     ): array {
         $messages = [];
         $instructorBusy = false;
@@ -43,7 +44,7 @@ class ReservaAvailabilityService
         $instructorBusyUntil = null;
         $nextTime = null;
 
-        if ($this->sameDayCutoff->blocksDate($date)) {
+        if (! $ignoreCutoff && $this->sameDayCutoff->blocksDate($date)) {
             return [
                 'available' => false,
                 'instructor_busy' => false,

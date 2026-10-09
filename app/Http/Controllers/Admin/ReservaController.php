@@ -117,7 +117,7 @@ class ReservaController extends Controller
             'weekdays.*' => ['integer', Rule::in([1, 2, 3, 4, 5, 6])],
             'time' => ['required', Rule::in(Reservas::halfHourTimes())],
             'class_dates' => ['nullable', 'array'],
-            'class_dates.*' => ['date'],
+            'class_dates.*' => ['date', 'after_or_equal:'.$minDate, 'distinct'],
             'class_times' => ['nullable', 'array'],
             'class_times.*' => [Rule::in(Reservas::halfHourTimes())],
             'class_vehicle_ids' => ['nullable', 'array'],
@@ -133,6 +133,10 @@ class ReservaController extends Controller
             'weekdays.min' => 'Marca al menos un día de la semana.',
             'time.required' => 'Selecciona la hora de las clases.',
             'time.in' => 'La hora seleccionada no es válida.',
+            'class_dates.*.after_or_equal' => $this->sameDayCutoff->isSameDayBlocked()
+                ? $this->sameDayCutoff->message()
+                : 'Hay una fecha de clase anterior a hoy.',
+            'class_dates.*.distinct' => 'Hay fechas repetidas en la vista previa. Cada clase debe tener un día distinto.',
             'class_times.*.in' => 'Hay una hora de clase que no es válida.',
             'class_vehicle_ids.*.exists' => 'Hay un vehículo seleccionado que no es válido.',
             'instructor_id.required' => 'Selecciona un instructor.',
@@ -172,6 +176,29 @@ class ReservaController extends Controller
             }
         }
 
+        $needed = $student->remainingClasses();
+        $datesOverride = [];
+
+        if ($classDates !== []) {
+            if (count($classDates) !== $needed) {
+                $message = 'Las fechas de la vista previa no coinciden con las clases pendientes.';
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => $message,
+                        'errors' => ['class_dates' => [$message]],
+                    ], 422);
+                }
+
+                return back()
+                    ->withInput()
+                    ->with('assign_schedule', $payload)
+                    ->withErrors(['class_dates' => $message]);
+            }
+
+            $datesOverride = array_values($classDates);
+        }
+
         try {
             $reservas = $this->schedules->assign(
                 $student,
@@ -182,6 +209,7 @@ class ReservaController extends Controller
                 (int) $validated['vehicle_id'],
                 $timesByDate,
                 $vehiclesByDate,
+                $datesOverride,
             );
         } catch (ValidationException $exception) {
             if ($request->expectsJson()) {
@@ -281,6 +309,65 @@ class ReservaController extends Controller
         return response()->json([
             'message' => 'Cita cancelada correctamente.',
             'status' => 'cancelada',
+        ]);
+    }
+
+    public function updateAssignment(Request $request, Reservas $reserva): JsonResponse
+    {
+        if (! $request->user()?->isAdmin()) {
+            abort(403, 'Solo un administrador puede cambiar el instructor o el vehículo.');
+        }
+
+        if (! in_array($reserva->status, ['pendiente', 'confirmada'], true)) {
+            return response()->json([
+                'message' => 'Solo se pueden cambiar instructor o vehículo en clases pendientes o confirmadas.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'instructor_id' => ['required', Rule::exists('instructors', 'id')],
+            'vehicle_id' => ['required', Rule::exists('vehicles', 'id')],
+        ], [
+            'instructor_id.required' => 'Selecciona un instructor.',
+            'vehicle_id.required' => 'Selecciona un vehículo.',
+        ]);
+
+        $date = $reserva->date instanceof \DateTimeInterface
+            ? $reserva->date->format('Y-m-d')
+            : substr((string) $reserva->date, 0, 10);
+
+        $check = $this->availability->check(
+            $date,
+            Reservas::normalizeTime((string) $reserva->time),
+            (int) $validated['instructor_id'],
+            (int) $validated['vehicle_id'],
+            (int) $reserva->student_id,
+            (int) $reserva->id,
+            true,
+        );
+
+        if (! $check['available']) {
+            return response()->json([
+                'message' => $check['messages'][0] ?? 'No hay disponibilidad con ese instructor o vehículo.',
+                'messages' => $check['messages'],
+            ], 422);
+        }
+
+        $reserva->update([
+            'instructor_id' => (string) $validated['instructor_id'],
+            'vehicle_id' => (string) $validated['vehicle_id'],
+        ]);
+
+        $reserva->load(['instructor', 'vehicle']);
+
+        return response()->json([
+            'message' => 'Se actualizó el instructor y el vehículo.',
+            'instructor_id' => (int) $reserva->instructor_id,
+            'instructor' => $reserva->instructor?->fullName() ?: '—',
+            'vehicle_id' => (int) $reserva->vehicle_id,
+            'vehicle' => $reserva->vehicle
+                ? trim($reserva->vehicle->modelo.' ('.$reserva->vehicle->plate.')')
+                : '—',
         ]);
     }
 

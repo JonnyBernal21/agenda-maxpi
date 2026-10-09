@@ -71,7 +71,7 @@ const nextIsoWeekday = (from, isoDay) => {
     return addCalendarDays(date, delta);
 };
 
-const formatDisplayDate = (iso) => {
+export const formatDisplayDate = (iso) => {
     const date = parseLocalDate(iso);
 
     if (!date) {
@@ -232,7 +232,8 @@ export const bindSingleDatePickers = async (root = document) => {
 
         const minDate = parseLocalDate(field.dataset.minDate || valueInput.min || '');
         const selected = parseLocalDate(valueInput.value);
-        const presets = presetSingleDays(field.dataset.minDate || valueInput.min || '');
+        const showPresets = field.dataset.noPresets !== 'true';
+        const presets = showPresets ? presetSingleDays(field.dataset.minDate || valueInput.min || '') : {};
         const rangesPosition = wide ? 'left' : 'top';
 
         const instance = new Litepicker({
@@ -247,6 +248,7 @@ export const bindSingleDatePickers = async (root = document) => {
             lang: 'es-MX',
             minDate: minDate || undefined,
             showTooltip: false,
+            parentEl: document.body,
             zIndex: 2000,
             dropdowns: {
                 minYear: 2020,
@@ -255,10 +257,23 @@ export const bindSingleDatePickers = async (root = document) => {
                 years: true,
             },
             setup(picker) {
+                picker.on('show', () => {
+                    root.querySelectorAll('.js-single-date-value').forEach((other) => {
+                        if (other !== valueInput) {
+                            other._litepicker?.hide();
+                        }
+                    });
+                });
+
                 picker.on('render', (ui) => {
+                    ui.dataset.singleDay = 'true';
+
+                    if (!showPresets) {
+                        return;
+                    }
+
                     ui.dataset.plugins = 'ranges';
                     ui.dataset.rangesPosition = rangesPosition;
-                    ui.dataset.singleDay = 'true';
 
                     const main = ui.querySelector('.container__main');
 

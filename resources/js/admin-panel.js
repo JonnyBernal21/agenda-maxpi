@@ -1,7 +1,7 @@
 import * as bootstrap from 'bootstrap';
 import { confirmSoftDelete, showBookingError, showBookingSuccess } from './booking-confirm';
 import { bindStudentEnrollment } from './student-enrollment';
-import { bindSingleDatePickers } from './date-range-picker';
+import { bindSingleDatePickers, formatDisplayDate } from './date-range-picker';
 
 let openScheduleSummary = () => {};
 let openPaymentReceipt = () => {};
@@ -143,7 +143,10 @@ const initAssignSchedule = () => {
     const submitBtn = document.getElementById('assignScheduleSubmit');
     const studentNameEl = document.getElementById('scheduleStudentName');
     const studentInitialEl = document.getElementById('scheduleStudentInitial');
-    const numClasses = Number(modalEl.dataset.numClasses || 0);
+    const studentIdInput = document.getElementById('schedule_student_id');
+    const courseNameEl = document.getElementById('scheduleCourseName');
+    const numClassesLabel = document.getElementById('scheduleNumClassesLabel');
+    const classCount = () => Number(modalEl.dataset.numClasses || 0);
     const conflictsUrl = modalEl.dataset.conflictsUrl || '';
     const minStartDate = modalEl.dataset.minStartDate || '';
     const sameDayBlocked = modalEl.dataset.sameDayBlocked === 'true';
@@ -330,10 +333,34 @@ const initAssignSchedule = () => {
                 return `
                     <tr class="${busy ? 'schedule-row-busy' : ''}" data-date="${date}">
                         <td>${index + 1}</td>
-                        <td>${weekdayName(date)}</td>
-                        <td>${formatFullDate(date)}</td>
+                        <td data-weekday-cell class="text-capitalize">${weekdayName(date)}</td>
                         <td>
-                            <input type="hidden" name="class_dates[]" value="${date}">
+                            <div
+                                class="assign-field js-single-date schedule-date-picker"
+                                data-no-presets="true"
+                                ${minStartDate ? `data-min-date="${minStartDate}"` : ''}
+                            >
+                                <i class="bi bi-calendar-event assign-field__icon"></i>
+                                <input
+                                    type="hidden"
+                                    name="class_dates[]"
+                                    class="js-single-date-value"
+                                    value="${date}"
+                                    ${minStartDate ? `min="${minStartDate}"` : ''}
+                                    data-row-date-input="${date}"
+                                >
+                                <input
+                                    type="text"
+                                    class="form-control form-control-sm schedule-date-select js-single-date-display"
+                                    value="${formatDisplayDate(date)}"
+                                    placeholder="dd/mm/aaaa"
+                                    autocomplete="off"
+                                    readonly
+                                    aria-label="Fecha de la clase ${index + 1}"
+                                >
+                            </div>
+                        </td>
+                        <td>
                             <select name="class_times[]" class="form-select form-select-sm schedule-time-select" data-row-date="${date}" aria-label="Hora de la clase ${index + 1}">
                                 ${timeOptionsHtml(time)}
                             </select>
@@ -468,7 +495,98 @@ const initAssignSchedule = () => {
         }
     };
 
-    const bindRowSelects = () => {
+    const moveStoreKey = (store, from, to) => {
+        if (from === to) {
+            return;
+        }
+
+        if (store[from] !== undefined) {
+            store[to] = store[from];
+            delete store[from];
+        }
+    };
+
+    const syncRowDateField = (input, iso) => {
+        input.value = iso;
+        const display = input.closest('.js-single-date')?.querySelector('.js-single-date-display');
+
+        if (display) {
+            display.value = formatDisplayDate(iso);
+        }
+
+        if (iso) {
+            input._litepicker?.setDate(iso);
+        }
+    };
+
+    const applyRowDateChange = (input) => {
+        const row = input.closest('tr[data-date]');
+        const oldDate = row?.dataset.date || input.dataset.rowDateInput;
+        const newDate = input.value;
+
+        if (!row || !oldDate) {
+            return;
+        }
+
+        if (!newDate) {
+            syncRowDateField(input, oldDate);
+            return;
+        }
+
+        if (minStartDate && newDate < minStartDate) {
+            syncRowDateField(input, oldDate);
+            setConflictAlert(`<i class="bi bi-exclamation-triangle me-1"></i>${sameDayMessage}`, true);
+            return;
+        }
+
+        if (newDate !== oldDate && previewDatesList.includes(newDate)) {
+            syncRowDateField(input, oldDate);
+            setConflictAlert(
+                '<i class="bi bi-exclamation-triangle me-1"></i> Esa fecha ya está en otra clase. Elige un día distinto.',
+                true
+            );
+            return;
+        }
+
+        if (newDate === oldDate) {
+            return;
+        }
+
+        const weekdayCell = row.querySelector('[data-weekday-cell]');
+
+        if (weekdayCell) {
+            weekdayCell.textContent = weekdayName(newDate);
+        }
+
+        row.dataset.date = newDate;
+        input.dataset.rowDateInput = newDate;
+
+        const timeSelect = row.querySelector('[data-row-date]');
+        const vehicleSelect = row.querySelector('[data-row-vehicle]');
+
+        if (timeSelect) {
+            timeSelect.dataset.rowDate = newDate;
+        }
+
+        if (vehicleSelect) {
+            vehicleSelect.dataset.rowVehicle = newDate;
+        }
+
+        moveStoreKey(rowTimes, oldDate, newDate);
+        moveStoreKey(rowVehicles, oldDate, newDate);
+        previewDatesList = previewDatesList.map((date) => (date === oldDate ? newDate : date));
+        fetchConflicts();
+    };
+
+    const destroyRowDatePickers = () => {
+        tableBody?.querySelectorAll('.js-single-date-value').forEach((input) => {
+            input._litepicker?.hide();
+            input._litepicker?.destroy();
+            delete input._litepicker;
+        });
+    };
+
+    const bindRowSelects = async () => {
         tableBody?.querySelectorAll('[data-row-date]').forEach((select) => {
             select.addEventListener('change', () => {
                 rowTimes[select.dataset.rowDate] = select.value;
@@ -482,6 +600,12 @@ const initAssignSchedule = () => {
                 fetchConflicts();
             });
         });
+
+        tableBody?.querySelectorAll('[data-row-date-input]').forEach((input) => {
+            input.addEventListener('change', () => applyRowDateChange(input));
+        });
+
+        await bindSingleDatePickers(modalEl);
     };
 
     const refreshPreview = async ({ resetTimes = false, resetVehicles = false } = {}) => {
@@ -498,6 +622,7 @@ const initAssignSchedule = () => {
         setConflictAlert('', false);
 
         if (minStartDate && startDate && startDate < minStartDate) {
+            destroyRowDatePickers();
             summary.textContent = sameDayMessage;
             tableBody.innerHTML = emptyPreviewRow;
             previewDatesList = [];
@@ -506,7 +631,8 @@ const initAssignSchedule = () => {
             return;
         }
 
-        if (!startDate || weekdays.length === 0 || !time || numClasses < 1) {
+        if (!startDate || weekdays.length === 0 || !time || classCount() < 1) {
+            destroyRowDatePickers();
             summary.textContent = 'Completa los pasos de arriba para armar la tabla.';
             tableBody.innerHTML = emptyPreviewRow;
             previewDatesList = [];
@@ -514,7 +640,7 @@ const initAssignSchedule = () => {
             return;
         }
 
-        const dates = previewDates(startDate, weekdays, numClasses);
+        const dates = previewDates(startDate, weekdays, classCount());
         pruneRowValues(rowTimes, dates, time, resetTimes);
         pruneRowValues(rowVehicles, dates, vehicleId, resetVehicles);
         previewDatesList = dates;
@@ -526,8 +652,9 @@ const initAssignSchedule = () => {
             .join(', ');
 
         summary.textContent = `${dates.length} ${dates.length === 1 ? 'clase' : 'clases'} · ${dayNames}`;
+        destroyRowDatePickers();
         tableBody.innerHTML = renderRows(dates);
-        bindRowSelects();
+        await bindRowSelects();
         setSubmitEnabled(Boolean(instructorId && allRowsHaveVehicle()));
         await fetchConflicts();
     };
@@ -631,11 +758,84 @@ const initAssignSchedule = () => {
         studentInitialEl.textContent = name ? name.charAt(0).toLocaleUpperCase('es-MX') : 'A';
     };
 
+    const fillAssignStudent = (button) => {
+        const studentId = button.dataset.studentId || '';
+        const name = button.dataset.studentName || '';
+        const course = button.dataset.courseName || 'Sin curso';
+        const classes = String(button.dataset.numClasses || '0');
+
+        if (studentIdInput) {
+            studentIdInput.value = studentId;
+        }
+
+        if (studentNameEl) {
+            studentNameEl.textContent = name;
+        }
+
+        if (courseNameEl) {
+            courseNameEl.textContent = course;
+        }
+
+        if (numClassesLabel) {
+            numClassesLabel.textContent = classes;
+        }
+
+        modalEl.dataset.numClasses = classes;
+
+        if (dateInput) {
+            dateInput.value = '';
+        }
+
+        const display = document.getElementById('schedule_start_date_display');
+
+        if (display) {
+            display.value = '';
+        }
+
+        dateInput?._litepicker?.clearSelection();
+
+        if (timeInput) {
+            timeInput.value = '';
+        }
+
+        if (instructorInput) {
+            instructorInput.value = '';
+        }
+
+        if (vehicleInput) {
+            vehicleInput.value = '';
+        }
+
+        modalEl.querySelectorAll('.weekday-chip__input').forEach((input) => {
+            input.checked = false;
+        });
+
+        rowTimes = {};
+        rowVehicles = {};
+        previewDatesList = [];
+        setConflictAlert('', false);
+        setSubmitEnabled(false);
+        syncStudentInitial();
+        updateStartHint();
+    };
+
     modalEl.addEventListener('shown.bs.modal', () => {
         syncStudentInitial();
         applyMinStartDate();
         updateStartHint();
         refreshPreview();
+    });
+
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('.js-assign-student-schedule');
+
+        if (!button) {
+            return;
+        }
+
+        event.preventDefault();
+        fillAssignStudent(button);
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
     });
 
     applyMinStartDate();
@@ -645,6 +845,9 @@ const initAssignSchedule = () => {
 
     modalEl.addEventListener('hidden.bs.modal', () => {
         dateInput?._litepicker?.hide();
+        tableBody?.querySelectorAll('.js-single-date-value').forEach((input) => {
+            input._litepicker?.hide();
+        });
     });
 };
 
@@ -2026,6 +2229,84 @@ const initStudentAdmin = () => {
         studentWizard?.reset();
     };
 
+    const assignmentOptionsHtml = (items, selectedId, valueKey, labelKey) =>
+        (Array.isArray(items) ? items : [])
+            .map((item) => {
+                const value = String(item[valueKey] ?? '');
+                const selected = value === String(selectedId ?? '');
+
+                return `<option value="${escapeHtml(value)}" ${selected ? 'selected' : ''}>${escapeHtml(item[labelKey] || '')}</option>`;
+            })
+            .join('');
+
+    const saveScheduleAssignment = async (row) => {
+        const url = row.dataset.updateUrl;
+        const instructorSelect = row.querySelector('[data-assignment-field="instructor_id"]');
+        const vehicleSelect = row.querySelector('[data-assignment-field="vehicle_id"]');
+
+        if (!url || !instructorSelect || !vehicleSelect) {
+            return;
+        }
+
+        const instructorId = instructorSelect.value;
+        const vehicleId = vehicleSelect.value;
+        const previousInstructor = row.dataset.instructorId || '';
+        const previousVehicle = row.dataset.vehicleId || '';
+
+        if (instructorId === previousInstructor && vehicleId === previousVehicle) {
+            return;
+        }
+
+        instructorSelect.disabled = true;
+        vehicleSelect.disabled = true;
+
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({
+                    instructor_id: instructorId,
+                    vehicle_id: vehicleId,
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                instructorSelect.value = previousInstructor;
+                vehicleSelect.value = previousVehicle;
+                await showBookingError(payload.message || 'No se pudo actualizar el instructor o el vehículo.');
+                return;
+            }
+
+            row.dataset.instructorId = String(payload.instructor_id ?? instructorId);
+            row.dataset.vehicleId = String(payload.vehicle_id ?? vehicleId);
+            instructorSelect.value = row.dataset.instructorId;
+            vehicleSelect.value = row.dataset.vehicleId;
+        } catch {
+            instructorSelect.value = previousInstructor;
+            vehicleSelect.value = previousVehicle;
+            await showBookingError('No se pudo actualizar el instructor o el vehículo. Intenta de nuevo.');
+        } finally {
+            instructorSelect.disabled = false;
+            vehicleSelect.disabled = false;
+        }
+    };
+
+    const bindScheduleAssignment = (contentEl) => {
+        contentEl?.querySelectorAll('tr[data-update-url]').forEach((row) => {
+            row.querySelectorAll('[data-assignment-field]').forEach((select) => {
+                select.addEventListener('change', () => {
+                    saveScheduleAssignment(row);
+                });
+            });
+        });
+    };
+
     const renderSchedule = (payload) => {
         const nameEl = document.getElementById('studentScheduleName');
         const summaryEl = document.getElementById('studentScheduleSummary');
@@ -2056,6 +2337,8 @@ const initStudentAdmin = () => {
             return;
         }
 
+        const instructors = payload.instructors ?? [];
+        const vehicles = payload.vehicles ?? [];
         const rows = classes
             .map((item) => {
                 const date = String(item.date ?? '').slice(0, 10);
@@ -2066,15 +2349,26 @@ const initStudentAdmin = () => {
                     item.status === 'cancelada' ? 'is-cancelled' : '',
                 ].filter(Boolean).join(' ');
 
+                const instructorCell = item.can_edit
+                    ? `<select class="form-select form-select-sm schedule-assignment-select" data-assignment-field="instructor_id" aria-label="Instructor de la clase">${assignmentOptionsHtml(instructors, item.instructor_id, 'id', 'name')}</select>`
+                    : escapeHtml(item.instructor);
+                const vehicleCell = item.can_edit
+                    ? `<select class="form-select form-select-sm schedule-assignment-select" data-assignment-field="vehicle_id" aria-label="Vehículo de la clase">${assignmentOptionsHtml(vehicles, item.vehicle_id, 'id', 'label')}</select>`
+                    : escapeHtml(item.vehicle);
+
+                const updateAttrs = item.can_edit
+                    ? ` data-update-url="${escapeHtml(item.update_url || '')}" data-instructor-id="${escapeHtml(String(item.instructor_id ?? ''))}" data-vehicle-id="${escapeHtml(String(item.vehicle_id ?? ''))}"`
+                    : '';
+
                 return `
-                    <tr class="${rowClass}">
+                    <tr class="${rowClass}"${updateAttrs}>
                         <td>
                             <span class="d-block text-capitalize">${escapeHtml(weekdayName(date))}</span>
                             <span class="text-muted small">${escapeHtml(formatFullDate(date))}</span>
                         </td>
                         <td class="fw-semibold">${escapeHtml(timeRange)}</td>
-                        <td>${escapeHtml(item.instructor)}</td>
-                        <td>${escapeHtml(item.vehicle)}</td>
+                        <td>${instructorCell}</td>
+                        <td>${vehicleCell}</td>
                         <td>
                             <span class="badge ${escapeHtml(item.status_class)}">${escapeHtml(item.status_label)}</span>
                         </td>
@@ -2099,6 +2393,8 @@ const initStudentAdmin = () => {
                 </table>
             </div>
         `;
+
+        bindScheduleAssignment(contentEl);
     };
 
     const openSchedule = async (button) => {
@@ -3251,9 +3547,191 @@ const initStudentPay = () => {
     });
 };
 
+const initAdminNotifications = () => {
+    const root = document.querySelector('[data-notifications]');
+
+    if (!root) {
+        return;
+    }
+
+    const listEl = root.querySelector('.js-notifications-list');
+    const badgeEl = root.querySelector('[data-notifications-badge]');
+    const readAllBtn = root.querySelector('.js-notifications-read-all');
+    const indexUrl = root.dataset.indexUrl;
+    const readUrl = root.dataset.readUrl;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    let items = [];
+
+    const badgeLabel = (count) => (count > 9 ? '9+' : String(count));
+
+    const setBadge = (count) => {
+        if (!badgeEl) {
+            return;
+        }
+
+        badgeEl.textContent = badgeLabel(count);
+        badgeEl.hidden = count < 1;
+    };
+
+    const peopleHtml = (people = [], more = 0) => {
+        if (!Array.isArray(people) || people.length === 0) {
+            return '';
+        }
+
+        const rows = people
+            .map((person) => {
+                const course = person.course
+                    ? `<small>${escapeHtml(person.course)}</small>`
+                    : '';
+
+                return `
+                    <li>
+                        <span>
+                            <strong>${escapeHtml(person.name || 'Alumno')}</strong>
+                            ${course}
+                        </span>
+                        <span>${escapeHtml(person.balance_label || '')}</span>
+                    </li>
+                `;
+            })
+            .join('');
+        const extra = more > 0 ? `<p class="admin-notifications__more">y ${more} más</p>` : '';
+
+        return `<ul class="admin-notifications__people">${rows}</ul>${extra}`;
+    };
+
+    const render = (payload = {}) => {
+        items = Array.isArray(payload.items) ? payload.items : [];
+        setBadge(Number(payload.unread || 0));
+
+        if (!listEl) {
+            return;
+        }
+
+        if (!items.length) {
+            listEl.innerHTML = `
+                <div class="admin-notifications__empty">
+                    <i class="bi bi-bell-slash"></i>
+                    No hay notificaciones por ahora.
+                </div>
+            `;
+            return;
+        }
+
+        listEl.innerHTML = items
+            .map((item) => {
+                const unread = item.unread ? ' is-unread' : '';
+                const tone = item.tone || 'info';
+
+                return `
+                    <a class="admin-notifications__item${unread}" href="${escapeHtml(item.url || '#')}" data-notification-key="${escapeHtml(item.key || '')}">
+                        <span class="admin-notifications__icon is-${escapeHtml(tone)}">
+                            <i class="bi ${escapeHtml(item.icon || 'bi-bell')}"></i>
+                        </span>
+                        <span class="admin-notifications__body">
+                            <span class="admin-notifications__title">
+                                ${escapeHtml(item.title || 'Aviso')}
+                                <span class="admin-notifications__time">${escapeHtml(item.time || '')}</span>
+                            </span>
+                            <p class="admin-notifications__text">${escapeHtml(item.body || '')}</p>
+                            ${peopleHtml(item.people, item.more)}
+                        </span>
+                    </a>
+                `;
+            })
+            .join('');
+    };
+
+    const fetchJson = async (url, options = {}) => {
+        const response = await fetch(url, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(options.headers || {}),
+            },
+            ...options,
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(payload.message || 'No se pudieron cargar las notificaciones.');
+        }
+
+        return payload;
+    };
+
+    const refresh = async () => {
+        if (!indexUrl) {
+            return;
+        }
+
+        try {
+            render(await fetchJson(indexUrl));
+        } catch {
+            if (listEl && !items.length) {
+                listEl.innerHTML = `
+                    <div class="admin-notifications__empty">
+                        No se pudieron cargar las notificaciones.
+                    </div>
+                `;
+            }
+        }
+    };
+
+    const markRead = async ({ all = false, keys = [] } = {}) => {
+        if (!readUrl) {
+            return;
+        }
+
+        try {
+            render(
+                await fetchJson(readUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({ all, keys }),
+                })
+            );
+        } catch {
+            await refresh();
+        }
+    };
+
+    readAllBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        markRead({ all: true });
+    });
+
+    listEl?.addEventListener('click', (event) => {
+        const item = event.target.closest('[data-notification-key]');
+        const key = item?.dataset.notificationKey;
+
+        if (!key) {
+            return;
+        }
+
+        const current = items.find((entry) => entry.key === key);
+
+        if (current?.unread) {
+            markRead({ keys: [key] });
+        }
+    });
+
+    root.addEventListener('show.bs.dropdown', () => {
+        refresh();
+    });
+
+    refresh();
+    window.setInterval(refresh, 60000);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     initDocumentUploads();
     initStudentAdmin();
+    initAdminNotifications();
     initInstructorAdmin();
     initVehicleAdmin();
     initCourseAdmin();

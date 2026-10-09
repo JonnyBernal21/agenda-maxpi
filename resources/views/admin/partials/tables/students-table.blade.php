@@ -208,7 +208,22 @@
                         <span class="students-table__date">{{ $firstClass['date'] }}</span>
                         <span class="students-table__time">{{ $firstClass['time'] }}</span>
                     @else
-                        <span class="text-muted">Sin asignar</span>
+                        <div class="student-schedule-cell">
+                            <span class="text-muted">Sin asignar</span>
+                            @if (($student->remaining_classes ?? 0) > 0)
+                                <button
+                                    type="button"
+                                    class="btn student-assign-btn js-assign-student-schedule"
+                                    data-student-id="{{ $student->id }}"
+                                    data-student-name="{{ $student->fullName() }}"
+                                    data-course-name="{{ $student->course?->name ?? 'Sin curso' }}"
+                                    data-num-classes="{{ $student->remaining_classes }}"
+                                >
+                                    <i class="bi bi-calendar-plus"></i>
+                                    Asignar horarios
+                                </button>
+                            @endif
+                        </div>
                     @endif
                 </td>
                 <td>

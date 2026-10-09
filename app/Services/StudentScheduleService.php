@@ -51,6 +51,7 @@ class StudentScheduleService
      * @param  list<int>  $weekdays
      * @param  array<string, string>  $timesByDate
      * @param  array<string, int>  $vehiclesByDate
+     * @param  list<string>  $datesOverride
      * @return Collection<int, Reservas>
      */
     public function assign(
@@ -62,6 +63,7 @@ class StudentScheduleService
         int $vehicleId,
         array $timesByDate = [],
         array $vehiclesByDate = [],
+        array $datesOverride = [],
     ): Collection {
         $student->load(['course', 'extraClasses']);
 
@@ -85,12 +87,24 @@ class StudentScheduleService
             ]);
         }
 
-        $dates = $this->datesFor($startDate, $weekdays, $needed);
+        $dates = $datesOverride !== []
+            ? array_values($datesOverride)
+            : $this->datesFor($startDate, $weekdays, $needed);
 
         if (count($dates) < $needed) {
             throw ValidationException::withMessages([
-                'weekdays' => 'No se pudieron generar suficientes fechas con los días seleccionados.',
+                ($datesOverride !== [] ? 'class_dates' : 'weekdays') => $datesOverride !== []
+                    ? 'Las fechas de la vista previa no coinciden con las clases pendientes.'
+                    : 'No se pudieron generar suficientes fechas con los días seleccionados.',
             ]);
+        }
+
+        foreach ($dates as $date) {
+            if ($this->sameDayCutoff->blocksDate($date)) {
+                throw ValidationException::withMessages([
+                    'class_dates' => $this->sameDayCutoff->message(),
+                ]);
+            }
         }
 
         $conflicts = [];

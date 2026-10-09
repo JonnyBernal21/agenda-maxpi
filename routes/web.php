@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\EmailPreviewController;
 use App\Http\Controllers\Admin\ExpenseController as AdminExpenseController;
 use App\Http\Controllers\Admin\GeocodeController as AdminGeocodeController;
 use App\Http\Controllers\Admin\InstructorController as AdminInstructorController;
+use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\ReservaController as AdminReservaController;
 use App\Http\Controllers\Admin\RolePermissionController as AdminRolePermissionController;
@@ -38,6 +39,8 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::get('/admin', DashboardController::class)->name('admin.dashboard');
+    Route::get('/admin/notificaciones', [AdminNotificationController::class, 'index'])->name('admin.notifications.index');
+    Route::post('/admin/notificaciones/leer', [AdminNotificationController::class, 'markRead'])->name('admin.notifications.read');
     Route::get('/admin/calendar/events', [AdminCalendarController::class, 'events'])->name('admin.calendar.events');
 
     Route::get('/admin/alumnos', [AdminStudentController::class, 'index'])->name('admin.students.index');
@@ -95,6 +98,7 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::patch('/admin/reservas/{reserva}/complete', [AdminReservaController::class, 'complete'])->name('admin.reservas.complete');
     Route::patch('/admin/reservas/{reserva}/cancel', [AdminReservaController::class, 'cancel'])->name('admin.reservas.cancel');
     Route::patch('/admin/reservas/{reserva}/reschedule', [AdminReservaController::class, 'reschedule'])->name('admin.reservas.reschedule');
+    Route::patch('/admin/reservas/{reserva}/asignacion', [AdminReservaController::class, 'updateAssignment'])->name('admin.reservas.assignment');
     Route::get('/admin/reservas/options', [AdminAvailabilityController::class, 'options'])->name('admin.reservas.options');
     Route::get('/admin/reservas/check', [AdminAvailabilityController::class, 'check'])->name('admin.reservas.check');
     Route::get('/admin/reservas/instructor-conflicts', [AdminAvailabilityController::class, 'instructorConflicts'])->name('admin.reservas.instructor-conflicts');

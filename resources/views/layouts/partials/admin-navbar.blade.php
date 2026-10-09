@@ -103,6 +103,50 @@
             </ul>
 
             <div class="admin-navbar__actions">
+                @if (!empty($canSeeNotifications))
+                    <div
+                        class="dropdown admin-notifications"
+                        data-notifications
+                        data-index-url="{{ $notificationsIndexUrl }}"
+                        data-read-url="{{ $notificationsReadUrl }}"
+                    >
+                        <button
+                            class="admin-navbar__icon-link admin-notifications__toggle"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside"
+                            data-bs-display="static"
+                            aria-expanded="false"
+                            title="Notificaciones"
+                            aria-label="Notificaciones"
+                        >
+                            <i class="bi bi-bell"></i>
+                            <span
+                                class="admin-notifications__badge"
+                                data-notifications-badge
+                                @if(($notificationUnread ?? 0) < 1) hidden @endif
+                            >{{ ($notificationUnread ?? 0) > 9 ? '9+' : ($notificationUnread ?? 0) }}</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end admin-notifications__menu">
+                            <div class="admin-notifications__head">
+                                <div>
+                                    <strong>Notificaciones</strong>
+                                    <span class="admin-notifications__kicker">Pagos, alumnos y cuotas</span>
+                                </div>
+                                <button type="button" class="btn btn-link btn-sm admin-notifications__read-all js-notifications-read-all">
+                                    Marcar leídas
+                                </button>
+                            </div>
+                            <div class="admin-notifications__list js-notifications-list">
+                                <div class="admin-notifications__empty">
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                    Cargando...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 @if ($settingsUrl)
                     <a
                         class="admin-navbar__icon-link @if($settingsActive) is-active @endif"

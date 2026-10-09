@@ -7,6 +7,7 @@ use App\Models\Instructor;
 use App\Models\Reservas;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Services\AdminNotificationService;
 use App\Services\SameDayScheduleCutoff;
 use App\Support\PermissionCatalog;
 use Illuminate\Support\Facades\Gate;
@@ -32,6 +33,25 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
 
         $this->bootPermissions();
+
+        View::composer('layouts.partials.admin-navbar', function ($view) {
+            $user = auth()->user();
+            $notifications = app(AdminNotificationService::class);
+            $canSee = $notifications->canAccess($user);
+
+            $unread = 0;
+
+            if ($canSee && $user && Schema::hasTable('admin_notification_reads')) {
+                $unread = $notifications->feed($user)['unread'];
+            }
+
+            $view->with([
+                'canSeeNotifications' => $canSee,
+                'notificationUnread' => $unread,
+                'notificationsIndexUrl' => $canSee ? route('admin.notifications.index') : null,
+                'notificationsReadUrl' => $canSee ? route('admin.notifications.read') : null,
+            ]);
+        });
 
         View::composer([
             'layouts.admin',

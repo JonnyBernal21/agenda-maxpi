@@ -54,11 +54,16 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    public function isAdmin(): bool
+    {
+        return $this->role?->isAdmin() ?? false;
+    }
+
     public function hasPermission(string $key): bool
     {
         $this->loadMissing('role.permissions');
 
-        if ($this->role?->isAdmin()) {
+        if ($this->isAdmin()) {
             return true;
         }
 
