@@ -38,6 +38,11 @@ class Setting extends Model
         return asset($this->logo_path);
     }
 
+    public function faviconUrl(): string
+    {
+        return $this->logoUrl() ?: asset('logo.png');
+    }
+
     public function timezone(): string
     {
         $value = $this->attributes['timezone'] ?? null;

@@ -61,6 +61,24 @@ class SettingsModuleTest extends TestCase
             ->assertSee('Correos');
     }
 
+    public function test_pages_use_the_company_logo_as_favicon(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('rel="icon"', false)
+            ->assertSee(asset('logo.png'), false);
+
+        $this->actingAs(User::factory()->create());
+        $setting = app(SettingService::class)->current();
+        $setting->update(['logo_path' => 'uploads/settings/logo-maxpi.png']);
+        Cache::forget(SettingService::CACHE_KEY);
+
+        $this->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('rel="icon"', false)
+            ->assertSee('uploads/settings/logo-maxpi.png', false);
+    }
+
     public function test_admin_can_change_the_header_title(): void
     {
         $this->actingAs(User::factory()->create());
