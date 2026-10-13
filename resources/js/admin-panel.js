@@ -3557,8 +3557,10 @@ const initAdminNotifications = () => {
     const listEl = root.querySelector('.js-notifications-list');
     const badgeEl = root.querySelector('[data-notifications-badge]');
     const readAllBtn = root.querySelector('.js-notifications-read-all');
+    const clearReadBtn = root.querySelector('.js-notifications-clear-read');
     const indexUrl = root.dataset.indexUrl;
     const readUrl = root.dataset.readUrl;
+    const destroyUrl = root.dataset.destroyUrl;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     let items = [];
 
@@ -3602,7 +3604,17 @@ const initAdminNotifications = () => {
 
     const render = (payload = {}) => {
         items = Array.isArray(payload.items) ? payload.items : [];
-        setBadge(Number(payload.unread || 0));
+        const unreadCount = Number(payload.unread || 0);
+        const readCount = items.filter((item) => !item.unread).length;
+        setBadge(unreadCount);
+
+        if (readAllBtn) {
+            readAllBtn.hidden = unreadCount < 1;
+        }
+
+        if (clearReadBtn) {
+            clearReadBtn.hidden = readCount < 1;
+        }
 
         if (!listEl) {
             return;
@@ -3622,21 +3634,33 @@ const initAdminNotifications = () => {
             .map((item) => {
                 const unread = item.unread ? ' is-unread' : '';
                 const tone = item.tone || 'info';
+                const key = escapeHtml(item.key || '');
 
                 return `
-                    <a class="admin-notifications__item${unread}" href="${escapeHtml(item.url || '#')}" data-notification-key="${escapeHtml(item.key || '')}">
-                        <span class="admin-notifications__icon is-${escapeHtml(tone)}">
-                            <i class="bi ${escapeHtml(item.icon || 'bi-bell')}"></i>
-                        </span>
-                        <span class="admin-notifications__body">
-                            <span class="admin-notifications__title">
-                                ${escapeHtml(item.title || 'Aviso')}
-                                <span class="admin-notifications__time">${escapeHtml(item.time || '')}</span>
+                    <article class="admin-notifications__item${unread}" data-notification-key="${key}">
+                        <a class="admin-notifications__link" href="${escapeHtml(item.url || '#')}">
+                            <span class="admin-notifications__icon is-${escapeHtml(tone)}">
+                                <i class="bi ${escapeHtml(item.icon || 'bi-bell')}"></i>
                             </span>
-                            <p class="admin-notifications__text">${escapeHtml(item.body || '')}</p>
-                            ${peopleHtml(item.people, item.more)}
-                        </span>
-                    </a>
+                            <span class="admin-notifications__body">
+                                <span class="admin-notifications__title">
+                                    ${escapeHtml(item.title || 'Aviso')}
+                                    <span class="admin-notifications__time">${escapeHtml(item.time || '')}</span>
+                                </span>
+                                <p class="admin-notifications__text">${escapeHtml(item.body || '')}</p>
+                                ${peopleHtml(item.people, item.more)}
+                            </span>
+                        </a>
+                        <button
+                            type="button"
+                            class="admin-notifications__delete js-notification-delete"
+                            data-notification-delete="${key}"
+                            title="Borrar notificación"
+                            aria-label="Borrar notificación"
+                        >
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </article>
                 `;
             })
             .join('');
@@ -3678,25 +3702,33 @@ const initAdminNotifications = () => {
         }
     };
 
-    const markRead = async ({ all = false, keys = [] } = {}) => {
-        if (!readUrl) {
+    const postNotifications = async (url, body) => {
+        if (!url) {
             return;
         }
 
         try {
             render(
-                await fetchJson(readUrl, {
+                await fetchJson(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': csrfToken,
                     },
-                    body: JSON.stringify({ all, keys }),
+                    body: JSON.stringify(body),
                 })
             );
         } catch {
             await refresh();
         }
+    };
+
+    const markRead = async ({ all = false, keys = [] } = {}) => {
+        await postNotifications(readUrl, { all, keys });
+    };
+
+    const dismiss = async ({ read = false, keys = [] } = {}) => {
+        await postNotifications(destroyUrl, { read, keys });
     };
 
     readAllBtn?.addEventListener('click', (event) => {
@@ -3705,7 +3737,27 @@ const initAdminNotifications = () => {
         markRead({ all: true });
     });
 
+    clearReadBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        dismiss({ read: true });
+    });
+
     listEl?.addEventListener('click', (event) => {
+        const deleteBtn = event.target.closest('[data-notification-delete]');
+
+        if (deleteBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+            const key = deleteBtn.dataset.notificationDelete;
+
+            if (key) {
+                dismiss({ keys: [key] });
+            }
+
+            return;
+        }
+
         const item = event.target.closest('[data-notification-key]');
         const key = item?.dataset.notificationKey;
 

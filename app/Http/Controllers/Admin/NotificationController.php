@@ -34,4 +34,21 @@ class NotificationController extends Controller
 
         return response()->json($this->notifications->feed($request->user()));
     }
+
+    public function destroy(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'keys' => ['nullable', 'array'],
+            'keys.*' => ['string', 'max:80'],
+            'read' => ['sometimes', 'boolean'],
+        ]);
+
+        if ($request->boolean('read')) {
+            $this->notifications->dismissRead($request->user());
+        } else {
+            $this->notifications->dismiss($request->user(), $validated['keys'] ?? []);
+        }
+
+        return response()->json($this->notifications->feed($request->user()));
+    }
 }

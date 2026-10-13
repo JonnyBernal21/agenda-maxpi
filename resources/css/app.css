@@ -66,6 +66,7 @@ body {
     font-weight: 600;
     letter-spacing: -0.02em;
     color: #fff !important;
+    order: 1;
 }
 
 .navbar-brand-mark {
@@ -97,8 +98,23 @@ body {
 }
 
 .admin-navbar__nav {
-    align-items: center;
     gap: 0.1rem;
+}
+
+@media (min-width: 1200px) {
+    .admin-navbar__nav {
+        align-items: center;
+    }
+
+    .admin-navbar .navbar-collapse {
+        order: 2 !important;
+        flex-grow: 1;
+    }
+
+    .admin-navbar__actions {
+        order: 3 !important;
+        margin-left: 0.35rem;
+    }
 }
 
 .admin-navbar .nav-link {
@@ -144,13 +160,43 @@ body {
     align-items: center;
     gap: 0.5rem;
     margin-left: auto;
-    padding-top: 0.5rem;
+    order: 2;
+}
+
+.admin-navbar .navbar-collapse {
+    order: 4;
+}
+
+.admin-navbar__tools {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.admin-navbar__icon-label {
+    display: none;
+}
+
+.admin-navbar .navbar-toggler {
+    order: 3;
+    padding: 0.38rem 0.48rem;
+    border-radius: 0.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.admin-navbar .navbar-toggler:focus {
+    box-shadow: none;
+}
+
+.admin-navbar .navbar-toggler[aria-expanded="true"] {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .admin-navbar__icon-link {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 0.4rem;
     width: 2.15rem;
     height: 2.15rem;
     border-radius: 0.55rem;
@@ -229,12 +275,24 @@ button.admin-navbar__icon-link {
     color: #64748b;
 }
 
-.admin-notifications__read-all {
+.admin-notifications__head-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.05rem;
+}
+
+.admin-notifications__read-all,
+.admin-notifications__clear-read {
     padding: 0;
     font-size: 0.75rem;
     font-weight: 600;
     text-decoration: none;
     white-space: nowrap;
+}
+
+.admin-notifications__clear-read {
+    color: #b91c1c;
 }
 
 .admin-notifications__list {
@@ -254,24 +312,59 @@ button.admin-navbar__icon-link {
 
 .admin-notifications__item {
     display: flex;
-    gap: 0.7rem;
+    align-items: stretch;
     width: 100%;
-    padding: 0.8rem 1rem;
     border: 0;
     border-bottom: 1px solid #f1f5f9;
     background: #fff;
     color: inherit;
     text-align: left;
-    text-decoration: none;
 }
 
 .admin-notifications__item:hover {
     background: #f8fafc;
-    color: inherit;
 }
 
 .admin-notifications__item.is-unread {
     background: #f0f9ff;
+}
+
+.admin-notifications__link {
+    display: flex;
+    gap: 0.7rem;
+    min-width: 0;
+    flex: 1;
+    padding: 0.8rem 0.35rem 0.8rem 1rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.admin-notifications__link:hover {
+    color: inherit;
+}
+
+.admin-notifications__delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    align-self: flex-start;
+    width: 1.7rem;
+    height: 1.7rem;
+    margin: 0.55rem 0.45rem 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0.45rem;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 0.72rem;
+    line-height: 1;
+}
+
+.admin-notifications__delete:hover,
+.admin-notifications__delete:focus-visible {
+    background: #fee2e2;
+    color: #b91c1c;
 }
 
 .admin-notifications__icon {
@@ -448,43 +541,201 @@ button.admin-navbar__icon-link {
     color: var(--brand-500);
 }
 
-@media (min-width: 992px) {
-    .admin-navbar__actions {
-        padding-top: 0;
+@media (max-width: 1199.98px) {
+    .admin-navbar__inner {
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
     }
-}
 
-@media (max-width: 991.98px) {
-    .admin-navbar__nav {
-        padding: 0.75rem 0 0.35rem;
-        gap: 0.15rem;
+    .admin-navbar .navbar-collapse {
+        padding-top: 0.65rem;
+        flex-basis: 100% !important;
+        width: 100% !important;
+        align-items: stretch !important;
+    }
+
+    .admin-navbar .navbar-nav.admin-navbar__nav {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        margin: 0 !important;
+        gap: 0.5rem;
+        padding: 0.15rem 0 0.85rem;
+    }
+
+    .admin-navbar .navbar-nav.admin-navbar__nav:has(> :only-child) {
+        grid-template-columns: 1fr !important;
+    }
+
+    .admin-navbar__nav .nav-item {
+        display: flex;
+        min-width: 0;
     }
 
     .admin-navbar .nav-link {
-        width: 100%;
+        display: flex !important;
+        width: 100% !important;
+        min-height: 2.85rem;
+        justify-content: flex-start;
+        padding: 0.7rem 0.8rem !important;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .admin-navbar .nav-link i {
+        font-size: 1.05rem;
+    }
+
+    .admin-navbar .nav-link.active {
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(255, 255, 255, 0.12);
     }
 
     .admin-navbar__split {
-        width: 100%;
+        grid-column: 1 / -1;
+        width: 100% !important;
         height: 1px;
-        margin: 0.35rem 0;
+        margin: 0.1rem 0;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .admin-navbar__brand {
+        margin-right: auto;
+        min-width: 0;
     }
 
     .admin-navbar__actions {
-        width: 100%;
-        justify-content: space-between;
-        padding: 0.75rem 0 0.35rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        margin-top: 0.35rem;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        width: auto !important;
+        margin-left: 0.25rem !important;
+        padding: 0;
+        border: 0;
+        gap: 0.2rem;
+        order: 2;
+    }
+
+    .admin-navbar__tools {
+        display: flex !important;
+        grid-template-columns: none;
+        gap: 0.15rem;
+        width: auto;
+    }
+
+    .admin-navbar__icon-link {
+        width: 2.15rem !important;
+        height: 2.15rem !important;
+        background: transparent;
+        border: 0;
+    }
+
+    .admin-navbar__icon-label {
+        display: none !important;
+    }
+
+    .admin-navbar__account,
+    .admin-navbar__user,
+    .admin-notifications {
+        width: auto !important;
+        max-width: none;
     }
 
     .admin-navbar__user {
-        max-width: none;
-        flex: 1;
+        max-width: 11rem;
+        padding: 0.15rem 0.45rem 0.15rem 0.15rem;
     }
 
     .admin-navbar__user-name {
+        max-width: 7.5rem;
+    }
+
+    .admin-navbar .navbar-toggler {
+        order: 3;
+        margin-left: 0.1rem;
+    }
+
+    .admin-navbar .navbar-collapse {
+        order: 4;
+        padding-top: 0.65rem;
+    }
+
+    .admin-navbar,
+    .admin-navbar__inner,
+    .admin-navbar__actions,
+    .admin-navbar__tools,
+    .admin-notifications {
+        overflow: visible;
+    }
+
+    .admin-notifications__menu,
+    .admin-notifications .dropdown-menu {
+        position: fixed !important;
+        top: 4.35rem !important;
+        right: 0.7rem !important;
+        left: auto !important;
+        width: min(24.5rem, calc(100vw - 1.4rem)) !important;
+        max-width: calc(100vw - 1.4rem) !important;
+        max-height: calc(100dvh - 5.2rem);
+        margin: 0 !important;
+        transform: none !important;
+        inset: 4.35rem 0.7rem auto auto;
+        z-index: 1080;
+    }
+
+    .admin-notifications__list {
+        max-height: calc(100dvh - 9.25rem);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .admin-navbar .nav-link {
+        font-size: 0.78rem;
+        padding: 0.65rem 0.7rem !important;
+    }
+
+    .admin-navbar__user-meta {
+        display: none;
+    }
+
+    .admin-navbar__user {
+        padding: 0.12rem;
         max-width: none;
+    }
+
+    .admin-navbar__user::after {
+        display: none;
+    }
+
+    .navbar-brand-name {
+        max-width: 7.5rem;
+    }
+
+    .admin-notifications__menu,
+    .admin-notifications .dropdown-menu {
+        top: 4.2rem !important;
+        right: 0.55rem !important;
+        left: 0.55rem !important;
+        width: auto !important;
+        max-width: none !important;
+        inset: 4.2rem 0.55rem auto 0.55rem;
+    }
+
+    .admin-notifications__head {
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 0.85rem 0.65rem;
+    }
+
+    .admin-notifications__kicker {
+        max-width: 12rem;
+    }
+
+    .admin-notifications__empty {
+        padding: 1.4rem 0.9rem;
+        text-align: center;
     }
 }
 

@@ -50,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
                 'notificationUnread' => $unread,
                 'notificationsIndexUrl' => $canSee ? route('admin.notifications.index') : null,
                 'notificationsReadUrl' => $canSee ? route('admin.notifications.read') : null,
+                'notificationsDestroyUrl' => $canSee ? route('admin.notifications.destroy') : null,
             ]);
         });
 

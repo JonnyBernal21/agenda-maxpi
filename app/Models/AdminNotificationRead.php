@@ -10,7 +10,15 @@ class AdminNotificationRead extends Model
     protected $fillable = [
         'user_id',
         'item_key',
+        'dismissed_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'dismissed_at' => 'datetime',
+        ];
+    }
 
     public function user(): BelongsTo
     {

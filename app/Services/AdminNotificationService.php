@@ -24,6 +24,8 @@ class AdminNotificationService
 
     private const DUE_PREVIEW = 8;
 
+    public const READ_TTL_HOURS = 24;
+
     public function canAccess(?User $user): bool
     {
         if (! $user) {
@@ -38,11 +40,11 @@ class AdminNotificationService
      */
     public function feed(User $user): array
     {
-        $reads = AdminNotificationRead::query()
+        $states = AdminNotificationRead::query()
             ->where('user_id', $user->id)
-            ->pluck('item_key')
-            ->all();
-        $readKeys = array_flip($reads);
+            ->get(['item_key', 'dismissed_at', 'created_at'])
+            ->keyBy('item_key');
+        $readExpiresAt = now()->subHours(self::READ_TTL_HOURS);
 
         $events = collect()
             ->merge($this->paymentItems())
@@ -53,12 +55,14 @@ class AdminNotificationService
 
         $items = collect($this->dueReminder())
             ->merge($events)
-            ->map(function (array $item) use ($readKeys) {
-                $item['unread'] = ! isset($readKeys[$item['key']]);
+            ->filter(fn (array $item) => $this->isVisible($item, $states->get($item['key']), $readExpiresAt))
+            ->map(function (array $item) use ($states) {
+                $item['unread'] = ! $states->has($item['key']);
                 unset($item['timestamp']);
 
                 return $item;
             })
+            ->values()
             ->all();
 
         $unread = collect($items)->where('unread', true)->count();
@@ -94,6 +98,53 @@ class AdminNotificationService
             ->all();
 
         $this->markRead($user, $keys);
+    }
+
+    /**
+     * @param  list<string>  $keys
+     */
+    public function dismiss(User $user, array $keys): void
+    {
+        $keys = collect($keys)
+            ->filter(fn ($key) => is_string($key) && $key !== '')
+            ->unique()
+            ->values();
+        $now = now();
+
+        foreach ($keys as $key) {
+            AdminNotificationRead::query()->updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'item_key' => $key,
+                ],
+                [
+                    'dismissed_at' => $now,
+                ]
+            );
+        }
+    }
+
+    public function dismissRead(User $user): void
+    {
+        $keys = collect($this->feed($user)['items'])
+            ->where('unread', false)
+            ->pluck('key')
+            ->all();
+
+        $this->dismiss($user, $keys);
+    }
+
+    private function isVisible(array $item, ?AdminNotificationRead $state, Carbon $readExpiresAt): bool
+    {
+        if (! $state) {
+            return true;
+        }
+
+        if ($state->dismissed_at) {
+            return false;
+        }
+
+        return $state->created_at === null || $state->created_at->gt($readExpiresAt);
     }
 
     /**

@@ -41,6 +41,7 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::get('/admin', DashboardController::class)->name('admin.dashboard');
     Route::get('/admin/notificaciones', [AdminNotificationController::class, 'index'])->name('admin.notifications.index');
     Route::post('/admin/notificaciones/leer', [AdminNotificationController::class, 'markRead'])->name('admin.notifications.read');
+    Route::post('/admin/notificaciones/borrar', [AdminNotificationController::class, 'destroy'])->name('admin.notifications.destroy');
     Route::get('/admin/calendar/events', [AdminCalendarController::class, 'events'])->name('admin.calendar.events');
 
     Route::get('/admin/alumnos', [AdminStudentController::class, 'index'])->name('admin.students.index');

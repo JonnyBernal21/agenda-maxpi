@@ -98,6 +98,67 @@ class NotificationFeedTest extends TestCase
             ->assertUnauthorized();
     }
 
+    public function test_admin_can_delete_a_notification(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $this->makeStudent(['name' => 'Karla']);
+
+        $payload = $this->getJson(route('admin.notifications.index'))
+            ->assertOk()
+            ->json();
+
+        $key = collect($payload['items'])->firstWhere('type', 'student_registered')['key'];
+
+        $this->postJson(route('admin.notifications.destroy'), ['keys' => [$key]])
+            ->assertOk()
+            ->assertJsonMissing(['key' => $key]);
+    }
+
+    public function test_admin_can_delete_read_notifications(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $student = $this->makeStudent([
+            'payment_total' => 3500,
+            'payment_plan' => 1,
+        ]);
+        $student->payments()->create([
+            'amount' => 500,
+            'paid_at' => now()->toDateString(),
+            'payment_method' => Student::PAYMENT_CASH,
+        ]);
+
+        $payload = $this->getJson(route('admin.notifications.index'))->json();
+        $studentKey = collect($payload['items'])->firstWhere('type', 'student_registered')['key'];
+
+        $this->postJson(route('admin.notifications.read'), ['keys' => [$studentKey]])->assertOk();
+
+        $after = $this->postJson(route('admin.notifications.destroy'), ['read' => true])
+            ->assertOk()
+            ->json();
+
+        $this->assertFalse(collect($after['items'])->contains('key', $studentKey));
+        $this->assertTrue(collect($after['items'])->contains('type', 'payment'));
+        $this->assertGreaterThan(0, $after['unread']);
+    }
+
+    public function test_read_notifications_expire_after_timeout(): void
+    {
+        $this->freezeTime();
+        $this->actingAs(User::factory()->create());
+        $this->makeStudent(['name' => 'Elena', 'payment_total' => 0]);
+
+        $this->postJson(route('admin.notifications.read'), ['all' => true])
+            ->assertOk()
+            ->assertJsonPath('unread', 0)
+            ->assertJsonFragment(['title' => 'Nuevo alumno']);
+
+        $this->travel(25)->hours();
+
+        $this->getJson(route('admin.notifications.index'))
+            ->assertOk()
+            ->assertJsonMissing(['title' => 'Nuevo alumno']);
+    }
+
     public function test_liquidated_student_is_not_in_the_daily_reminder(): void
     {
         $this->actingAs(User::factory()->create());
