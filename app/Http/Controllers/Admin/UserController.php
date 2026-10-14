@@ -17,10 +17,14 @@ class UserController extends Controller
     {
         $users = User::query()
             ->with('role')
+            ->whereDoesntHave('role', fn ($query) => $query->where('slug', Role::INSTRUCTOR))
             ->orderBy('name')
             ->get();
 
-        $roles = Role::query()->orderBy('name')->get();
+        $roles = Role::query()
+            ->where('slug', '!=', Role::INSTRUCTOR)
+            ->orderBy('name')
+            ->get();
 
         return view('admin.settings.users', compact('users', 'roles'));
     }
@@ -100,8 +104,12 @@ class UserController extends Controller
                 $user
                     ? Rule::unique('users', 'email')->ignore($user->id)
                     : 'unique:users,email',
+                Rule::unique('instructors', 'email'),
             ],
-            'role_id' => ['required', Rule::exists('roles', 'id')],
+            'role_id' => [
+                'required',
+                Rule::exists('roles', 'id')->where(fn ($query) => $query->where('slug', '!=', Role::INSTRUCTOR)),
+            ],
             'password' => [$user ? 'nullable' : 'required', 'string', 'min:8', 'confirmed'],
         ];
     }

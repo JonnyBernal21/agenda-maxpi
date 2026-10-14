@@ -139,11 +139,45 @@ export async function confirmSoftDelete({ name, entity = 'registro' }) {
 
 /**
  * @param {{
+ *   kind?: 'fecha' | 'horario' | 'instructor' | 'vehiculo',
+ *   from?: string,
+ *   to?: string,
  *   student?: string,
- *   date?: string,
- *   time?: string,
  * }} options
  */
+export async function confirmEditClassSchedule({ kind = 'fecha', from, to, student } = {}) {
+    const titles = {
+        fecha: '¿Deseas editar la fecha?',
+        horario: '¿Deseas editar el horario?',
+        instructor: '¿Deseas editar el instructor?',
+        vehiculo: '¿Deseas editar el vehículo?',
+    };
+    const title = titles[kind] ?? '¿Deseas guardar este cambio?';
+    const safeStudent = student ? escapeHtml(student) : '';
+    const safeFrom = escapeHtml(from || '—');
+    const safeTo = escapeHtml(to || '—');
+
+    const result = await Swal.fire({
+        ...swalBookingDefaults,
+        title,
+        html: `
+            <p class="swal-booking-message">
+                ${safeStudent ? `Clase de <span class="swal-booking-highlight">${safeStudent}</span>.` : ''}
+            </p>
+            <p class="swal-booking-message mb-0">
+                <span class="swal-booking-highlight">${safeFrom}</span>
+                <br>a<br>
+                <span class="swal-booking-highlight">${safeTo}</span>
+            </p>
+        `,
+        icon: 'question',
+        confirmButtonText: 'Confirmar',
+        cancelButtonText: 'Cancelar',
+    });
+
+    return result.isConfirmed;
+}
+
 export async function confirmCancelClass({ student, date, time } = {}) {
     const detail = [student, date, time].filter(Boolean).map(escapeHtml);
 

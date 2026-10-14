@@ -31,13 +31,13 @@ const initBalanceChart = () => {
                 {
                     label: 'Ingresos',
                     data: payload.sales || [],
-                    backgroundColor: '#2dd4bf',
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--brand-accent').trim() || '#F7E018',
                     borderRadius: 4,
                 },
                 {
                     label: 'Gastos',
                     data: payload.expenses || [],
-                    backgroundColor: '#f9a8d4',
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--admin-nav-bg').trim() || '#201E1F',
                     borderRadius: 4,
                 },
             ],

@@ -10,6 +10,7 @@ class ReservaStatus
     private const LABELS = [
         'pendiente' => 'Pendiente',
         'confirmada' => 'Confirmada',
+        'en_curso' => 'En curso',
         'completada' => 'Completada',
         'cancelada' => 'Cancelada',
     ];
@@ -23,6 +24,7 @@ class ReservaStatus
     {
         return match ($status) {
             'confirmada' => 'badge--status-confirmada',
+            'en_curso' => 'badge--status-en-curso',
             'completada' => 'badge--status-completada',
             'cancelada' => 'badge--status-cancelada',
             default => 'badge--status-pendiente',

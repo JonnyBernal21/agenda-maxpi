@@ -5,7 +5,7 @@
 @section('body')
     @include('layouts.partials.instructor-navbar')
 
-    <main class="container py-4 py-md-5">
+    <main class="app-content container-fluid py-3 py-lg-4">
         @if (session('success'))
             <div
                 id="app-flash"

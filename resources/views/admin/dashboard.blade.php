@@ -3,30 +3,89 @@
 @section('title', 'Panel administrador — ' . config('app.name'))
 
 @section('content')
-    <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3">
-        <div>
-            <h1 class="page-title mb-1">Panel administrador</h1>
-            <p class="page-subtitle mb-0">
-                Hola, {{ auth()->user()->name }}. Gestiona alumnos, clases y reservas.
-            </p>
+    @php
+        $hasQuickActions = collect([
+            'students.manage',
+            'instructors.manage',
+            'vehicles.manage',
+            'courses.manage',
+            'expenses.manage',
+            'reservas.manage',
+        ])->contains(fn ($permission) => auth()->user()?->can($permission));
+        $canSeePayments = auth()->user()?->can('students.view')
+            || auth()->user()?->can('students.manage')
+            || auth()->user()?->can('students.edit')
+            || auth()->user()?->can('students.pay')
+            || auth()->user()?->can('sales.view');
+        $canRegisterPayment = auth()->user()?->can('students.pay');
+        $featuredAction = match (true) {
+            auth()->user()?->can('students.manage') => 'student',
+            auth()->user()?->can('reservas.manage') => 'schedule',
+            default => null,
+        };
+        $todayLabel = mb_convert_case(
+            \Illuminate\Support\Carbon::now('America/Mexico_City')->locale('es')->isoFormat('dddd, D [de] MMMM [de] YYYY'),
+            MB_CASE_TITLE,
+            'UTF-8'
+        );
+    @endphp
+
+    <div class="page-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+        @include('partials.page-greeting', [
+            'name' => auth()->user()->name,
+            'subtitle' => 'Aquí tienes el resumen de tu operación de hoy.',
+        ])
+        <div class="dashboard-toolbar">
+            <span class="dashboard-toolbar__date">
+                <i class="bi bi-calendar3"></i>
+                {{ $todayLabel }}
+            </span>
+            @can('reservas.manage')
+                <button
+                    type="button"
+                    class="btn btn-brand dashboard-toolbar__cta"
+                    data-bs-toggle="modal"
+                    data-bs-target="#scheduleClassModal"
+                >
+                    <i class="bi bi-plus-lg"></i>
+                    Agendar clase
+                </button>
+            @endcan
         </div>
     </div>
 
     <div class="row g-3 mb-4">
         <div class="col-6 col-lg-3">
-            @canany(['students.view', 'students.manage', 'students.edit', 'students.delete'])
-                <a href="{{ route('admin.students.index') }}" class="text-decoration-none">
+            @can('reports.view')
+                <a href="{{ route('admin.reports.index') }}" class="text-decoration-none">
                     <div class="stat-card">
-                        <div class="stat-card__icon"><i class="bi bi-people"></i></div>
-                        <p class="stat-card__label">Alumnos</p>
-                        <p class="stat-card__value">{{ $studentsCount }}</p>
+                        <div class="stat-card__icon"><i class="bi bi-calendar-day"></i></div>
+                        <p class="stat-card__label">Clases de hoy</p>
+                        <p class="stat-card__value">{{ $classesTodayCount }}</p>
                     </div>
                 </a>
             @else
                 <div class="stat-card">
-                    <div class="stat-card__icon"><i class="bi bi-people"></i></div>
-                    <p class="stat-card__label">Alumnos</p>
-                    <p class="stat-card__value">{{ $studentsCount }}</p>
+                    <div class="stat-card__icon"><i class="bi bi-calendar-day"></i></div>
+                    <p class="stat-card__label">Clases de hoy</p>
+                    <p class="stat-card__value">{{ $classesTodayCount }}</p>
+                </div>
+            @endcan
+        </div>
+        <div class="col-6 col-lg-3">
+            @can('sales.view')
+                <a href="{{ route('admin.sales.index') }}" class="text-decoration-none">
+                    <div class="stat-card">
+                        <div class="stat-card__icon"><i class="bi bi-cash-stack"></i></div>
+                        <p class="stat-card__label">Ingresos del día</p>
+                        <p class="stat-card__value stat-card__value--money">{{ '$'.number_format($todayIncome, 2) }}</p>
+                    </div>
+                </a>
+            @else
+                <div class="stat-card">
+                    <div class="stat-card__icon"><i class="bi bi-cash-stack"></i></div>
+                    <p class="stat-card__label">Ingresos del día</p>
+                    <p class="stat-card__value stat-card__value--money">{{ '$'.number_format($todayIncome, 2) }}</p>
                 </div>
             @endcan
         </div>
@@ -64,105 +123,201 @@
                 </div>
             @endcan
         </div>
-        <div class="col-6 col-lg-3">
-            <div class="stat-card">
-                <div class="stat-card__icon"><i class="bi bi-calendar-check"></i></div>
-                <p class="stat-card__label">Reservas</p>
-                <p class="stat-card__value">{{ $reservasCount }}</p>
-            </div>
-        </div>
     </div>
 
-    @php
-        $hasQuickActions = collect([
-            'students.manage',
-            'instructors.manage',
-            'vehicles.manage',
-            'courses.manage',
-            'expenses.manage',
-            'reservas.manage',
-        ])->contains(fn ($permission) => auth()->user()?->can($permission));
-    @endphp
-
-    @if ($hasQuickActions)
-        <div class="action-bar d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div>
-                <p class="fw-semibold mb-0 text-dark">Acciones rápidas</p>
-                <p class="small text-muted mb-0">Solo se muestran las acciones permitidas para tu rol.</p>
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-                @can('students.manage')
-                    <button
-                        type="button"
-                        class="btn btn-brand d-flex align-items-center gap-2"
-                        data-bs-toggle="modal"
-                        data-bs-target="#addStudentModal"
-                    >
-                        <i class="bi bi-person-plus"></i>
-                        Agregar alumno
-                    </button>
-                @endcan
-                @can('instructors.manage')
-                    <button
-                        type="button"
-                        class="btn btn-brand-outline d-flex align-items-center gap-2"
-                        data-bs-toggle="modal"
-                        data-bs-target="#addInstructorModal"
-                    >
-                        <i class="bi bi-person-badge"></i>
-                        Agregar instructor
-                    </button>
-                @endcan
-                @can('vehicles.manage')
-                    <button
-                        type="button"
-                        class="btn btn-brand-outline d-flex align-items-center gap-2"
-                        data-bs-toggle="modal"
-                        data-bs-target="#addVehicleModal"
-                    >
-                        <i class="bi bi-car-front"></i>
-                        Agregar vehículo
-                    </button>
-                @endcan
-                @can('courses.manage')
-                    <button
-                        type="button"
-                        class="btn btn-brand-outline d-flex align-items-center gap-2"
-                        data-bs-toggle="modal"
-                        data-bs-target="#addCourseModal"
-                    >
-                        <i class="bi bi-journal-plus"></i>
-                        Agregar curso
-                    </button>
-                @endcan
-                @can('expenses.manage')
-                    <button
-                        type="button"
-                        class="btn btn-brand-outline d-flex align-items-center gap-2"
-                        data-bs-toggle="modal"
-                        data-bs-target="#addExpenseModal"
-                    >
-                        <i class="bi bi-receipt"></i>
-                        Agregar gasto
-                    </button>
-                @endcan
-                @can('reservas.manage')
-                    <button
-                        type="button"
-                        class="btn btn-brand-outline d-flex align-items-center gap-2"
-                        data-bs-toggle="modal"
-                        data-bs-target="#scheduleClassModal"
-                        id="openScheduleManualBtn"
-                    >
-                        <i class="bi bi-calendar-plus"></i>
-                        Agendar clase
-                    </button>
-                @endcan
-            </div>
+    <div class="row g-3 mb-4 dashboard-split align-items-stretch">
+        <div class="{{ ($hasQuickActions || $canSeePayments) ? 'col-xl-8' : 'col-12' }}">
+            @include('partials.day-agenda', [
+                'dayAgenda' => $dayAgenda,
+                'agendaUrl' => route('admin.agenda'),
+            ])
         </div>
-    @endif
 
-    <div class="panel-card">
+        @if ($hasQuickActions || $canSeePayments)
+            <div class="col-xl-4">
+                <div class="dashboard-side">
+            @if ($hasQuickActions)
+                    <section class="dash-panel is-collapsed" data-dash-panel="quick-actions">
+                        <header class="dash-panel__head">
+                            <h2 class="dash-panel__title">
+                                <i class="bi bi-lightning-charge-fill"></i>
+                                Acciones rápidas
+                            </h2>
+                            <button
+                                type="button"
+                                class="dash-panel__toggle"
+                                aria-expanded="false"
+                                title="Ver más"
+                                aria-label="Ver más"
+                            >
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                        </header>
+                        <div class="dash-panel__body">
+                        <div class="quick-actions">
+                            @can('students.manage')
+                                <button
+                                    type="button"
+                                    class="quick-action {{ $featuredAction === 'student' ? 'is-featured' : '' }}"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#addStudentModal"
+                                >
+                                    <span class="quick-action__icon"><i class="bi {{ $featuredAction === 'student' ? 'bi-plus-lg' : 'bi-person-plus' }}"></i></span>
+                                    <span class="quick-action__copy">
+                                        <strong>Agregar alumno</strong>
+                                        <small>Da de alta un nuevo alumno.</small>
+                                    </span>
+                                </button>
+                            @endcan
+                            @can('reservas.manage')
+                                <button
+                                    type="button"
+                                    class="quick-action {{ $featuredAction === 'schedule' ? 'is-featured' : '' }}"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#scheduleClassModal"
+                                    id="openScheduleManualBtn"
+                                >
+                                    <span class="quick-action__icon"><i class="bi {{ $featuredAction === 'schedule' ? 'bi-plus-lg' : 'bi-calendar-plus' }}"></i></span>
+                                    <span class="quick-action__copy">
+                                        <strong>Agendar clase</strong>
+                                        <small>Agenda una clase o evaluación.</small>
+                                    </span>
+                                </button>
+                            @endcan
+                            @can('instructors.manage')
+                                <button
+                                    type="button"
+                                    class="quick-action"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#addInstructorModal"
+                                >
+                                    <span class="quick-action__icon"><i class="bi bi-person-badge"></i></span>
+                                    <span class="quick-action__copy">
+                                        <strong>Agregar instructor</strong>
+                                        <small>Registra un instructor disponible.</small>
+                                    </span>
+                                </button>
+                            @endcan
+                            @can('vehicles.manage')
+                                <button
+                                    type="button"
+                                    class="quick-action"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#addVehicleModal"
+                                >
+                                    <span class="quick-action__icon"><i class="bi bi-car-front"></i></span>
+                                    <span class="quick-action__copy">
+                                        <strong>Agregar vehículo</strong>
+                                        <small>Añade un vehículo a la flota.</small>
+                                    </span>
+                                </button>
+                            @endcan
+                            @can('courses.manage')
+                                <button
+                                    type="button"
+                                    class="quick-action"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#addCourseModal"
+                                >
+                                    <span class="quick-action__icon"><i class="bi bi-journal-plus"></i></span>
+                                    <span class="quick-action__copy">
+                                        <strong>Agregar curso</strong>
+                                        <small>Crea un programa o paquete.</small>
+                                    </span>
+                                </button>
+                            @endcan
+                            @can('expenses.manage')
+                                <button
+                                    type="button"
+                                    class="quick-action"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#addExpenseModal"
+                                >
+                                    <span class="quick-action__icon"><i class="bi bi-receipt"></i></span>
+                                    <span class="quick-action__copy">
+                                        <strong>Agregar gasto</strong>
+                                        <small>Registra una salida de dinero.</small>
+                                    </span>
+                                </button>
+                            @endcan
+                        </div>
+                        </div>
+                    </section>
+            @endif
+
+            @if ($canSeePayments)
+                    <section class="dash-panel is-collapsed" data-dash-panel="upcoming-payments">
+                        <header class="dash-panel__head">
+                            <h2 class="dash-panel__title">
+                                <i class="bi bi-credit-card"></i>
+                                Próximos pagos
+                            </h2>
+                            <div class="dash-panel__tools">
+                            @if (auth()->user()?->can('students.view') || auth()->user()?->can('students.manage') || auth()->user()?->can('students.edit'))
+                                <a href="{{ route('admin.students.index') }}" class="dash-panel__link">
+                                    Ver todos
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            @elseif (auth()->user()?->can('sales.view'))
+                                <a href="{{ route('admin.sales.index') }}" class="dash-panel__link">
+                                    Ver todos
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            @endif
+                            <button
+                                type="button"
+                                class="dash-panel__toggle"
+                                aria-expanded="false"
+                                title="Ver más"
+                                aria-label="Ver más"
+                            >
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                            </div>
+                        </header>
+                        <div class="dash-panel__body">
+                        @if ($upcomingPayments === [])
+                            <p class="dash-panel__empty">No hay pagos próximos por ahora.</p>
+                        @else
+                            <ul class="upcoming-pay">
+                                @foreach ($upcomingPayments as $item)
+                                    @php $isPayable = $item['status'] === 'pending' && $canRegisterPayment; @endphp
+                                    <li
+                                        class="upcoming-pay__row{{ $isPayable ? ' is-payable js-student-pay' : '' }}"
+                                        @if ($isPayable)
+                                            role="button"
+                                            tabindex="0"
+                                            data-student-id="{{ $item['student_id'] }}"
+                                            data-student-name="{{ $item['name'] }}"
+                                            data-balance="{{ number_format($item['balance'], 2, '.', '') }}"
+                                            data-balance-label="${{ number_format($item['balance'], 2) }}"
+                                            data-payment-method="{{ $item['payment_method'] }}"
+                                            data-per-class-amount="{{ $item['suggested'] > 0 ? number_format($item['suggested'], 2, '.', '') : '' }}"
+                                            data-pay-url="{{ $item['pay_url'] }}"
+                                        @endif
+                                    >
+                                        <span class="upcoming-pay__avatar" aria-hidden="true">{{ $item['initials'] }}</span>
+                                        <div class="upcoming-pay__person">
+                                            <strong>{{ $item['name'] }}</strong>
+                                            <small>{{ $item['date_label'] }}</small>
+                                        </div>
+                                        <span class="upcoming-pay__amount">{{ $item['amount_label'] }}</span>
+                                        <span class="upcoming-pay__status upcoming-pay__status--{{ $item['status'] }}">
+                                            {{ $item['status_label'] }}
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        </div>
+                    </section>
+            @endif
+                </div>
+            </div>
+        @endif
+    </div>
+
+    <div class="panel-card dashboard-calendar">
         <div class="panel-card__header">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <div class="d-flex align-items-start gap-3">

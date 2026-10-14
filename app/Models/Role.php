@@ -10,6 +10,8 @@ class Role extends Model
 {
     public const ADMIN = 'admin';
 
+    public const INSTRUCTOR = 'instructor';
+
     /**
      * @var list<string>
      */

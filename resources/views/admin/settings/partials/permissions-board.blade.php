@@ -40,7 +40,7 @@
         <div class="col-lg-8 col-xl-9">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                 <h2 class="h6 fw-semibold mb-0">
-                    Permisos — <span class="text-primary">{{ $selected?->name }}</span>
+                    Permisos — <span class="permission-heading__role">{{ $selected?->name }}</span>
                 </h2>
                 @unless ($isAdminRole)
                     <div class="btn-group">

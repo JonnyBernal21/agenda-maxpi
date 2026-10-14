@@ -25,7 +25,7 @@
                             <div>
                                 <p class="email-template-card__name mb-1">{{ $item['name'] }}</p>
                                 <p class="email-template-card__desc mb-2">{{ $item['description'] }}</p>
-                                <span class="badge text-bg-light border">{{ $item['audience'] }}</span>
+                                <span class="email-template-card__audience">{{ $item['audience'] }}</span>
                             </div>
                         </div>
                     </a>

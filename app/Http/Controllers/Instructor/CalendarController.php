@@ -22,7 +22,7 @@ class CalendarController extends Controller
         $end = Carbon::parse($request->query('end', now()->addWeek()))->toDateString();
 
         $reservas = Reservas::query()
-            ->with(['student', 'vehicle'])
+            ->with(['student', 'vehicle', 'evaluation'])
             ->where('instructor_id', $instructor->id)
             ->whereBetween('date', [$start, $end])
             ->orderBy('date')
@@ -39,6 +39,7 @@ class CalendarController extends Controller
                 $vehicleLabel = $reserva->vehicle
                     ? "{$reserva->vehicle->modelo} ({$reserva->vehicle->plate})"
                     : 'Vehículo';
+                $vehicleType = $reserva->vehicle?->typeLabel() ?: null;
 
                 $colors = ReservaCalendarColors::forStatus($reserva->status);
                 $cancelled = $reserva->status === 'cancelada';
@@ -57,6 +58,7 @@ class CalendarController extends Controller
                     'extendedProps' => [
                         'student' => $studentName,
                         'vehicle' => $vehicleLabel,
+                        'vehicleType' => $vehicleType,
                         'classNumber' => $classNumber,
                         'isHomeClass' => $isHomeClass,
                         ...($reserva->student?->calendarHomeProps() ?? [
@@ -67,9 +69,23 @@ class CalendarController extends Controller
                             'notes' => null,
                         ]),
                         'status' => $reserva->status,
+                        'rsvp' => $reserva->rsvp_response,
+                        'rsvpLabel' => $reserva->rsvpLabel(),
                         'date' => $reserva->date,
                         'time' => $reserva->time,
                         'endTime' => date('H:i', strtotime($reserva->endsAt())),
+                        'canStart' => in_array($reserva->status, ['pendiente', 'confirmada'], true),
+                        'canContinue' => $reserva->status === 'en_curso',
+                        'canViewEvaluation' => $reserva->status === 'completada' && $reserva->evaluation?->isSubmitted(),
+                        'startUrl' => in_array($reserva->status, ['pendiente', 'confirmada'], true)
+                            ? route('instructor.evaluations.start', $reserva)
+                            : null,
+                        'formUrl' => in_array($reserva->status, ['pendiente', 'confirmada', 'en_curso'], true)
+                            ? route('instructor.evaluations.edit', $reserva)
+                            : null,
+                        'summaryUrl' => $reserva->status === 'completada'
+                            ? route('instructor.evaluations.summary', $reserva)
+                            : null,
                     ],
                 ];
             });

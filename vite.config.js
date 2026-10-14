@@ -14,6 +14,7 @@ export default defineConfig({
                 'resources/js/admin-reports.js',
                 'resources/js/admin-sales.js',
                 'resources/js/instructor-calendar.js',
+                'resources/js/class-evaluation.js',
             ],
             refresh: true,
         }),

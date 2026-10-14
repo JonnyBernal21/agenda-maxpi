@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Services\SettingService;
+use App\Support\AppTheme;
 use App\Support\SchoolProfile;
 use App\Support\UploadedDocument;
 use Illuminate\Http\RedirectResponse;
@@ -36,6 +37,7 @@ class SettingController extends Controller
             'company_name' => ['required', 'string', 'max:80'],
             'logo' => ['nullable', 'file', 'max:2048'],
             'remove_logo' => ['sometimes', 'boolean'],
+            'theme' => ['nullable', 'string', Rule::in(AppTheme::keys())],
             'timezone' => ['required', 'string', Rule::in(array_keys(SchoolProfile::TIMEZONES))],
             'phone' => ['nullable', 'string', 'max:40'],
             'email' => ['nullable', 'email', 'max:255'],
@@ -62,6 +64,9 @@ class SettingController extends Controller
 
         $setting->company_name = $validated['company_name'];
         $setting->logo_path = $logoPath;
+        if (array_key_exists('theme', $validated) && $validated['theme']) {
+            $setting->theme = $validated['theme'];
+        }
         $setting->timezone = $validated['timezone'];
         $setting->phone = $validated['phone'] ?? null;
         $setting->email = $validated['email'] ?? null;

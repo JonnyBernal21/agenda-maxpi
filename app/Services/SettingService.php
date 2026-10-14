@@ -25,6 +25,7 @@ class SettingService
         if (
             (Schema::hasColumn('settings', 'timezone') && ! array_key_exists('timezone', $setting->getAttributes()))
             || (Schema::hasColumn('settings', 'home_class_fee') && ! array_key_exists('home_class_fee', $setting->getAttributes()))
+            || (Schema::hasColumn('settings', 'theme') && ! array_key_exists('theme', $setting->getAttributes()))
         ) {
             $this->forget();
 

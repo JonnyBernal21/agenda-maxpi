@@ -9,6 +9,7 @@ use App\Models\Student;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class ReservaStatusTest extends TestCase
@@ -75,7 +76,8 @@ class ReservaStatusTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('instructor_id', $instructor->id)
-            ->assertJsonPath('vehicle_id', $vehicle->id);
+            ->assertJsonPath('vehicle_id', $vehicle->id)
+            ->assertJsonPath('vehicle_type', $vehicle->typeLabel());
 
         $this->assertDatabaseHas('reservas', [
             'id' => $reserva->id,
@@ -158,6 +160,83 @@ class ReservaStatusTest extends TestCase
             'id' => $reserva->id,
             'instructor_id' => $reserva->instructor_id,
             'vehicle_id' => $reserva->vehicle_id,
+        ]);
+    }
+
+    public function test_event_detail_modal_exposes_date_and_time_editors(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('eventModalDateValue', false)
+            ->assertSee('data-no-presets="true"', false)
+            ->assertSee('id="eventModalTime"', false)
+            ->assertSee('id="eventModalInstructor"', false)
+            ->assertSee('id="eventModalVehicle"', false)
+            ->assertSee('id="eventModalVehicleType"', false);
+    }
+
+    public function test_admin_can_reschedule_a_pending_class(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-14 10:00:00', 'America/Mexico_City'));
+        $this->actingAs(User::factory()->create());
+        $reserva = $this->makeReserva('pendiente', '2026-10-20', '09:00');
+
+        $this->patchJson(route('admin.reservas.reschedule', $reserva), [
+            'date' => '2026-10-23',
+            'time' => '11:00',
+        ])
+            ->assertOk()
+            ->assertJsonPath('date', '2026-10-23')
+            ->assertJsonPath('time', '11:00')
+            ->assertJsonPath('endTime', '13:00');
+
+        $this->assertDatabaseHas('reservas', [
+            'id' => $reserva->id,
+            'date' => '2026-10-23',
+            'time' => '11:00',
+        ]);
+    }
+
+    public function test_admin_cannot_reschedule_a_completed_class(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-14 10:00:00', 'America/Mexico_City'));
+        $this->actingAs(User::factory()->create());
+        $reserva = $this->makeReserva('completada', '2026-10-20', '09:00');
+
+        $this->patchJson(route('admin.reservas.reschedule', $reserva), [
+            'date' => '2026-10-23',
+            'time' => '11:00',
+        ])->assertStatus(422);
+
+        $this->assertDatabaseHas('reservas', [
+            'id' => $reserva->id,
+            'date' => '2026-10-20',
+            'time' => '09:00',
+        ]);
+    }
+
+    public function test_admin_cannot_reschedule_into_a_busy_slot(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-14 10:00:00', 'America/Mexico_City'));
+        $this->actingAs(User::factory()->create());
+        $first = $this->makeReserva('pendiente', '2026-10-23', '11:00');
+        $second = $this->makeReserva('pendiente', '2026-10-20', '09:00');
+        $second->update([
+            'instructor_id' => $first->instructor_id,
+            'vehicle_id' => $first->vehicle_id,
+        ]);
+
+        $this->patchJson(route('admin.reservas.reschedule', $second), [
+            'date' => '2026-10-23',
+            'time' => '11:00',
+        ])->assertStatus(422);
+
+        $this->assertDatabaseHas('reservas', [
+            'id' => $second->id,
+            'date' => '2026-10-20',
+            'time' => '09:00',
         ]);
     }
 

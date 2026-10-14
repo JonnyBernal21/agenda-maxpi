@@ -15,15 +15,132 @@
     $settingsActive = request()->routeIs('admin.settings.*')
         || request()->routeIs('admin.emails.*')
         || request()->routeIs('admin.users.*');
+    $showFinance = $user?->can('sales.view') || $user?->can('expenses.manage') || $user?->can('reports.view');
 @endphp
 
-<nav class="navbar navbar-expand-xl navbar-dark admin-navbar sticky-top">
-    <div class="container-fluid admin-navbar__inner">
-        <a class="navbar-brand admin-navbar__brand" href="{{ route('admin.dashboard') }}">
+<aside class="app-sidebar" id="appSidebar">
+    <div class="app-sidebar__brand">
+        <a class="app-sidebar__brand-link" href="{{ route('admin.dashboard') }}">
             @include('layouts.partials.brand-mark')
         </a>
+        <button
+            type="button"
+            class="btn-close btn-close-white d-lg-none"
+            data-sidebar-close
+            aria-label="Cerrar menú"
+        ></button>
+    </div>
+    <nav class="app-sidebar__nav d-flex flex-column" aria-label="Menú principal">
+        <a class="app-sidebar__link @if(request()->routeIs('admin.dashboard')) is-active @endif" href="{{ route('admin.dashboard') }}" title="Panel">
+            <i class="bi bi-grid-1x2"></i>
+            <span>Panel</span>
+        </a>
+        @canany(['students.view', 'students.manage', 'students.edit', 'students.delete'])
+            <a class="app-sidebar__link @if(request()->routeIs('admin.students.*')) is-active @endif" href="{{ route('admin.students.index') }}" title="Alumnos">
+                <i class="bi bi-people"></i>
+                <span>Alumnos</span>
+            </a>
+        @endcanany
+        @can('instructors.manage')
+            <a class="app-sidebar__link @if(request()->routeIs('admin.instructors.*')) is-active @endif" href="{{ route('admin.instructors.index') }}" title="Instructores">
+                <i class="bi bi-person-badge"></i>
+                <span>Instructores</span>
+            </a>
+        @endcan
+        @can('courses.manage')
+            <a class="app-sidebar__link @if(request()->routeIs('admin.courses.*')) is-active @endif" href="{{ route('admin.courses.index') }}" title="Cursos">
+                <i class="bi bi-journal-text"></i>
+                <span>Cursos</span>
+            </a>
+        @endcan
+        @can('vehicles.manage')
+            <a class="app-sidebar__link @if(request()->routeIs('admin.vehicles.*')) is-active @endif" href="{{ route('admin.vehicles.index') }}" title="Vehículos">
+                <i class="bi bi-car-front"></i>
+                <span>Vehículos</span>
+            </a>
+        @endcan
+        @if ($showFinance)
+            <span class="app-sidebar__split" aria-hidden="true"></span>
+        @endif
+        @can('sales.view')
+            <a class="app-sidebar__link @if(request()->routeIs('admin.sales.*')) is-active @endif" href="{{ route('admin.sales.index') }}" title="Ingresos">
+                <i class="bi bi-cash-stack"></i>
+                <span>Ingresos</span>
+            </a>
+        @endcan
+        @can('expenses.manage')
+            <a class="app-sidebar__link @if(request()->routeIs('admin.expenses.*')) is-active @endif" href="{{ route('admin.expenses.index') }}" title="Gastos">
+                <i class="bi bi-receipt"></i>
+                <span>Gastos</span>
+            </a>
+        @endcan
+        @can('reports.view')
+            <a class="app-sidebar__link @if(request()->routeIs('admin.reports.*')) is-active @endif" href="{{ route('admin.reports.index') }}" title="Reportes">
+                <i class="bi bi-bar-chart-line"></i>
+                <span>Reportes</span>
+            </a>
+        @endcan
+    </nav>
 
-        <div class="admin-navbar__actions order-2 order-xl-2">
+    <div class="dropdown dropup app-sidebar__account">
+        <button
+            class="app-sidebar__user"
+            type="button"
+            data-bs-toggle="dropdown"
+            data-bs-offset="0,10"
+            aria-expanded="false"
+            title="{{ $user->name }}"
+        >
+            <span class="app-sidebar__avatar">{{ $initials ?: 'U' }}</span>
+            <span class="app-sidebar__user-meta">
+                <span class="app-sidebar__user-name">{{ $user->name }}</span>
+                @if ($user->role?->name)
+                    <span class="app-sidebar__user-role">{{ $user->role->name }}</span>
+                @endif
+            </span>
+            <i class="bi bi-chevron-up app-sidebar__user-caret" aria-hidden="true"></i>
+        </button>
+        <ul class="dropdown-menu app-sidebar__menu">
+            @if ($settingsUrl)
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2" href="{{ $settingsUrl }}">
+                        <i class="bi bi-sliders"></i>
+                        Ajustes
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+            @endif
+            <li>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="dropdown-item d-flex align-items-center gap-2">
+                        <i class="bi bi-box-arrow-right"></i>
+                        Cerrar sesión
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </div>
+</aside>
+<div class="app-sidebar-backdrop d-lg-none" data-sidebar-close></div>
+
+<header class="app-topbar navbar navbar-dark">
+    <div class="container-fluid flex-nowrap gap-2">
+        <button
+            type="button"
+            class="app-topbar__toggle"
+            data-sidebar-toggle
+            aria-controls="appSidebar"
+            aria-expanded="false"
+            aria-label="Abrir o cerrar menú"
+            title="Menú"
+        >
+            <i class="bi bi-list"></i>
+        </button>
+        <a class="app-topbar__brand d-lg-none" href="{{ route('admin.dashboard') }}">
+            @include('layouts.partials.brand-mark')
+        </a>
+        <div class="admin-navbar__actions ms-auto">
             @if (!empty($canSeeNotifications) || $settingsUrl)
                 <div class="admin-navbar__tools">
                     @if (!empty($canSeeNotifications))
@@ -39,7 +156,6 @@
                                 type="button"
                                 data-bs-toggle="dropdown"
                                 data-bs-auto-close="outside"
-                                data-bs-display="static"
                                 aria-expanded="false"
                                 title="Notificaciones"
                                 aria-label="Notificaciones"
@@ -96,7 +212,6 @@
                     class="admin-navbar__user dropdown-toggle"
                     type="button"
                     data-bs-toggle="dropdown"
-                    data-bs-display="static"
                     aria-expanded="false"
                 >
                     <span class="admin-navbar__avatar">{{ $initials ?: 'U' }}</span>
@@ -129,87 +244,5 @@
                 </ul>
             </div>
         </div>
-
-        <button
-            class="navbar-toggler border-0 order-3"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#adminNavbar"
-            aria-controls="adminNavbar"
-            aria-expanded="false"
-            aria-label="Alternar navegación"
-        >
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse order-4 order-xl-1" id="adminNavbar">
-            <ul class="navbar-nav admin-navbar__nav me-xl-auto">
-                <li class="nav-item">
-                    <a class="nav-link @if(request()->routeIs('admin.dashboard')) active @endif" href="{{ route('admin.dashboard') }}">
-                        <i class="bi bi-grid-1x2"></i>
-                        <span>Panel</span>
-                    </a>
-                </li>
-                @canany(['students.view', 'students.manage', 'students.edit', 'students.delete'])
-                    <li class="nav-item">
-                        <a class="nav-link @if(request()->routeIs('admin.students.*')) active @endif" href="{{ route('admin.students.index') }}">
-                            <i class="bi bi-people"></i>
-                            <span>Alumnos</span>
-                        </a>
-                    </li>
-                @endcanany
-                @can('instructors.manage')
-                    <li class="nav-item">
-                        <a class="nav-link @if(request()->routeIs('admin.instructors.*')) active @endif" href="{{ route('admin.instructors.index') }}">
-                            <i class="bi bi-person-badge"></i>
-                            <span>Instructores</span>
-                        </a>
-                    </li>
-                @endcan
-                @can('courses.manage')
-                    <li class="nav-item">
-                        <a class="nav-link @if(request()->routeIs('admin.courses.*')) active @endif" href="{{ route('admin.courses.index') }}">
-                            <i class="bi bi-journal-text"></i>
-                            <span>Cursos</span>
-                        </a>
-                    </li>
-                @endcan
-                @can('vehicles.manage')
-                    <li class="nav-item">
-                        <a class="nav-link @if(request()->routeIs('admin.vehicles.*')) active @endif" href="{{ route('admin.vehicles.index') }}">
-                            <i class="bi bi-car-front"></i>
-                            <span>Vehículos</span>
-                        </a>
-                    </li>
-                @endcan
-                @if (auth()->user()?->can('sales.view') || auth()->user()?->can('expenses.manage') || auth()->user()?->can('reports.view'))
-                    <li class="nav-item admin-navbar__split" aria-hidden="true"></li>
-                @endif
-                @can('sales.view')
-                    <li class="nav-item">
-                        <a class="nav-link @if(request()->routeIs('admin.sales.*')) active @endif" href="{{ route('admin.sales.index') }}">
-                            <i class="bi bi-cash-stack"></i>
-                            <span>Ingresos</span>
-                        </a>
-                    </li>
-                @endcan
-                @can('expenses.manage')
-                    <li class="nav-item">
-                        <a class="nav-link @if(request()->routeIs('admin.expenses.*')) active @endif" href="{{ route('admin.expenses.index') }}">
-                            <i class="bi bi-receipt"></i>
-                            <span>Gastos</span>
-                        </a>
-                    </li>
-                @endcan
-                @can('reports.view')
-                    <li class="nav-item">
-                        <a class="nav-link @if(request()->routeIs('admin.reports.*')) active @endif" href="{{ route('admin.reports.index') }}">
-                            <i class="bi bi-bar-chart-line"></i>
-                            <span>Reportes</span>
-                        </a>
-                    </li>
-                @endcan
-            </ul>
-        </div>
     </div>
-</nav>
+</header>

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AvailabilityController as AdminAvailabilityContro
 use App\Http\Controllers\Admin\CalendarController as AdminCalendarController;
 use App\Http\Controllers\Admin\CourseController as AdminCourseController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DayAgendaController as AdminDayAgendaController;
 use App\Http\Controllers\Admin\EmailPreviewController;
 use App\Http\Controllers\Admin\ExpenseController as AdminExpenseController;
 use App\Http\Controllers\Admin\GeocodeController as AdminGeocodeController;
@@ -19,16 +20,27 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
 use App\Http\Controllers\Auth\InstructorLoginController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\ClassRsvpController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\Instructor\CalendarController as InstructorCalendarController;
+use App\Http\Controllers\Instructor\ClassEvaluationController as InstructorClassEvaluationController;
 use App\Http\Controllers\Instructor\DashboardController as InstructorDashboardController;
+use App\Http\Controllers\Instructor\DayAgendaController as InstructorDayAgendaController;
 use App\Http\Controllers\InstructorController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\VehicleController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
+
+Route::get('/asistencia/{token}', [ClassRsvpController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{8,16}')
+    ->name('reservas.rsvp');
+Route::post('/asistencia/{token}', [ClassRsvpController::class, 'store'])
+    ->where('token', '[A-Za-z0-9]{8,16}')
+    ->middleware('throttle:20,1')
+    ->name('reservas.rsvp.store');
 
 Route::middleware('guest:web')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
@@ -43,6 +55,7 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::post('/admin/notificaciones/leer', [AdminNotificationController::class, 'markRead'])->name('admin.notifications.read');
     Route::post('/admin/notificaciones/borrar', [AdminNotificationController::class, 'destroy'])->name('admin.notifications.destroy');
     Route::get('/admin/calendar/events', [AdminCalendarController::class, 'events'])->name('admin.calendar.events');
+    Route::get('/admin/agenda', AdminDayAgendaController::class)->name('admin.agenda');
 
     Route::get('/admin/alumnos', [AdminStudentController::class, 'index'])->name('admin.students.index');
     Route::get('/admin/instructores', [AdminInstructorController::class, 'index'])->name('admin.instructors.index');
@@ -95,6 +108,7 @@ Route::middleware(['auth:web', 'permission'])->group(function () {
     Route::post('/admin/students/{student}/abonos', [StudentController::class, 'storePayment'])->name('admin.students.payments.store');
     Route::post('/admin/reservas', [AdminReservaController::class, 'store'])->name('admin.reservas.store');
     Route::post('/admin/reservas/horarios', [AdminReservaController::class, 'storeSchedule'])->name('admin.reservas.schedule');
+    Route::post('/admin/reservas/{reserva}/recordatorio', [AdminReservaController::class, 'reminder'])->name('admin.reservas.reminder');
     Route::patch('/admin/reservas/{reserva}/confirm', [AdminReservaController::class, 'confirm'])->name('admin.reservas.confirm');
     Route::patch('/admin/reservas/{reserva}/complete', [AdminReservaController::class, 'complete'])->name('admin.reservas.complete');
     Route::patch('/admin/reservas/{reserva}/cancel', [AdminReservaController::class, 'cancel'])->name('admin.reservas.cancel');
@@ -110,8 +124,16 @@ Route::middleware('guest:instructor')->group(function () {
     Route::post('/instructor/login', [InstructorLoginController::class, 'store']);
 });
 
-Route::middleware('auth:instructor')->prefix('instructor')->name('instructor.')->group(function () {
+Route::middleware(['auth:instructor', 'evaluation.lock'])->prefix('instructor')->name('instructor.')->group(function () {
     Route::post('/logout', [InstructorLoginController::class, 'destroy'])->name('logout');
     Route::get('/', InstructorDashboardController::class)->name('dashboard');
     Route::get('/calendar/events', [InstructorCalendarController::class, 'events'])->name('calendar.events');
+    Route::get('/agenda', InstructorDayAgendaController::class)->name('agenda');
+    Route::post('/clases/{reserva}/iniciar', [InstructorClassEvaluationController::class, 'start'])->name('evaluations.start');
+    Route::get('/clases/{reserva}/evaluacion', [InstructorClassEvaluationController::class, 'edit'])->name('evaluations.edit');
+    Route::put('/clases/{reserva}/evaluacion', [InstructorClassEvaluationController::class, 'update'])->name('evaluations.update');
+    Route::post('/clases/{reserva}/evaluacion/cancelar', [InstructorClassEvaluationController::class, 'cancel'])->name('evaluations.cancel');
+    Route::get('/clases/{reserva}/evaluacion/resumen', [InstructorClassEvaluationController::class, 'summary'])->name('evaluations.summary');
+    Route::post('/clases/{reserva}/evaluacion/enviar', [InstructorClassEvaluationController::class, 'send'])->name('evaluations.send');
+    Route::post('/clases/{reserva}/completar', [InstructorClassEvaluationController::class, 'complete'])->name('evaluations.complete');
 });

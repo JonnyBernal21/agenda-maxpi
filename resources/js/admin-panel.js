@@ -2,6 +2,7 @@ import * as bootstrap from 'bootstrap';
 import { confirmSoftDelete, showBookingError, showBookingSuccess } from './booking-confirm';
 import { bindStudentEnrollment } from './student-enrollment';
 import { bindSingleDatePickers, formatDisplayDate } from './date-range-picker';
+import { initDayAgenda } from './day-agenda';
 
 let openScheduleSummary = () => {};
 let openPaymentReceipt = () => {};
@@ -81,7 +82,7 @@ const buildScheduleWhatsappMessage = ({ name, course, classes }) => {
             (item.time && item.end_time
                 ? `${formatTimeLabel(item.time)} – ${formatTimeLabel(item.end_time)}`
                 : item.time || '—');
-        const vehicle = item.vehicle_type || item.vehicle || 'Vehículo';
+        const vehicle = item.vehicle_type || '—';
 
         lines.push(`${index + 1}. ${weekday}, ${dateLabel}`);
         lines.push(`   ${timeRange} · ${vehicle}`);
@@ -2653,7 +2654,7 @@ const initStudentAdmin = () => {
 };
 
 const initInstructorAdmin = () => {
-    const fieldNames = ['name', 'last_name', 'email', 'phone', 'address', 'city', 'state', 'zip', 'country'];
+    const fieldNames = ['name', 'last_name', 'email', 'password', 'password_confirmation', 'phone', 'address', 'city', 'state', 'zip', 'country'];
     const docFields = [
         { name: 'photo', urlKey: 'photoUrl', label: 'Fotografía actual' },
         { name: 'dni_front', urlKey: 'dniFrontUrl', label: 'DNI frente actual' },
@@ -2672,6 +2673,8 @@ const initInstructorAdmin = () => {
             field.value = value ?? '';
         }
     };
+
+    const passwordInput = () => form?.querySelector('[name="password"]');
 
     const docWrapper = (name) => form?.querySelector(`[name="${name}"]`)?.closest('[data-doc-upload]');
 
@@ -2716,6 +2719,8 @@ const initInstructorAdmin = () => {
 
         setFieldValue('_form', 'instructor');
         setFieldValue('editing_id', '');
+        passwordInput()?.setAttribute('required', 'required');
+        document.getElementById('instructorPasswordHint')?.classList.add('d-none');
 
         const title = document.getElementById('instructorFormTitle');
         const icon = document.getElementById('instructorFormIcon');
@@ -2758,6 +2763,8 @@ const initInstructorAdmin = () => {
 
         setFieldValue('_form', 'instructor-edit');
         setFieldValue('editing_id', instructorId);
+        passwordInput()?.removeAttribute('required');
+        document.getElementById('instructorPasswordHint')?.classList.remove('d-none');
 
         const title = document.getElementById('instructorFormTitle');
         const icon = document.getElementById('instructorFormIcon');
@@ -2783,6 +2790,8 @@ const initInstructorAdmin = () => {
         setFieldValue('name', button.dataset.name || '');
         setFieldValue('last_name', button.dataset.lastName || '');
         setFieldValue('email', button.dataset.email || '');
+        setFieldValue('password', '');
+        setFieldValue('password_confirmation', '');
         setFieldValue('phone', button.dataset.phone || '');
         setFieldValue('address', button.dataset.address || '');
         setFieldValue('city', button.dataset.city || '');
@@ -3401,6 +3410,17 @@ const initSettingsBrand = () => {
     const preview = document.getElementById('settingsLogoPreview');
     const wrap = document.getElementById('settingsLogoPreviewWrap');
     const remove = document.getElementById('settingsRemoveLogo');
+    const themeCards = document.querySelectorAll('.theme-picker__card');
+
+    themeCards.forEach((card) => {
+        const radio = card.querySelector('input[name="theme"]');
+
+        radio?.addEventListener('change', () => {
+            themeCards.forEach((item) => item.classList.toggle('is-selected', item === card));
+            document.documentElement.dataset.theme = radio.value;
+            document.documentElement.dataset.scheme = radio.dataset.scheme || 'light';
+        });
+    });
 
     input?.addEventListener('change', () => {
         const file = input.files?.[0];
@@ -3535,15 +3555,34 @@ const initStudentPay = () => {
         }
     };
 
-    document.addEventListener('click', (event) => {
-        const button = event.target.closest('.js-student-pay');
+    const openPayModal = (trigger) => {
+        fillPayForm(trigger);
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    };
 
-        if (!button) {
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('.js-student-pay');
+
+        if (!trigger) {
             return;
         }
 
-        fillPayForm(button);
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        openPayModal(trigger);
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+
+        const trigger = event.target.closest('.js-student-pay');
+
+        if (!trigger) {
+            return;
+        }
+
+        event.preventDefault();
+        openPayModal(trigger);
     });
 };
 
@@ -3780,7 +3819,40 @@ const initAdminNotifications = () => {
     window.setInterval(refresh, 60000);
 };
 
+const initDashPanels = () => {
+    document.querySelectorAll('[data-dash-panel]').forEach((panel) => {
+        const key = `dash-panel:${panel.dataset.dashPanel}`;
+        const toggle = panel.querySelector('.dash-panel__toggle');
+
+        if (!toggle) {
+            return;
+        }
+
+        const apply = (collapsed) => {
+            panel.classList.toggle('is-collapsed', collapsed);
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            toggle.setAttribute('title', collapsed ? 'Ver más' : 'Ver menos');
+            toggle.setAttribute('aria-label', collapsed ? 'Ver más' : 'Ver menos');
+            const icon = toggle.querySelector('i');
+
+            if (icon) {
+                icon.className = collapsed ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+            }
+        };
+
+        apply(window.localStorage.getItem(key) !== 'open');
+
+        toggle.addEventListener('click', () => {
+            const collapsed = !panel.classList.contains('is-collapsed');
+            apply(collapsed);
+            window.localStorage.setItem(key, collapsed ? 'collapsed' : 'open');
+        });
+    });
+};
+
 document.addEventListener('DOMContentLoaded', () => {
+    initDashPanels();
+    initDayAgenda();
     initDocumentUploads();
     initStudentAdmin();
     initAdminNotifications();

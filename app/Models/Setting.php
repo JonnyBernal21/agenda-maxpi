@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AppTheme;
 use App\Support\SchoolProfile;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,6 +14,7 @@ class Setting extends Model
     protected $fillable = [
         'company_name',
         'logo_path',
+        'theme',
         'timezone',
         'phone',
         'email',
@@ -41,6 +43,21 @@ class Setting extends Model
     public function faviconUrl(): string
     {
         return $this->logoUrl() ?: asset('logo.png');
+    }
+
+    public function theme(): string
+    {
+        $value = $this->attributes['theme'] ?? null;
+
+        return AppTheme::isValid($value) ? $value : AppTheme::DEFAULT;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function themeTokens(): array
+    {
+        return AppTheme::tokens($this->theme());
     }
 
     public function timezone(): string

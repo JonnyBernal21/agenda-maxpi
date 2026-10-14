@@ -16,13 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ShareAppSetting::class,
         ]);
 
-        $middleware->redirectGuestsTo(function (Request $request) {
-            if ($request->is('instructor', 'instructor/*')) {
-                return route('instructor.login');
-            }
-
-            return route('login');
-        });
+        $middleware->redirectGuestsTo(fn () => route('login'));
 
         $middleware->redirectUsersTo(function (Request $request) {
             if ($request->is('instructor', 'instructor/*')) {
@@ -34,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'permission' => \App\Http\Middleware\EnsurePermission::class,
+            'evaluation.lock' => \App\Http\Middleware\EnsureInProgressEvaluation::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -8,11 +8,14 @@ import esLocale from '@fullcalendar/core/locales/es';
 import * as bootstrap from 'bootstrap';
 import { rollingWeekToolbar, rollingWeekViews } from './calendar-rolling-week';
 import { calendarEventContent, homeClassNoteHandlers } from './calendar-event-content';
-import { confirmCancelClass, showBookingError } from './booking-confirm';
+import { confirmCancelClass, confirmEditClassSchedule, optionText, showBookingError } from './booking-confirm';
+import { bindSingleDatePickers, formatLongDate } from './date-range-picker';
+import { bindEventHomeMap, fillEventHomeDetails } from './event-detail-home';
 
 const statusLabels = {
     pendiente: 'Pendiente',
     confirmada: 'Confirmada',
+    en_curso: 'En curso',
     completada: 'Completada',
     cancelada: 'Cancelada',
 };
@@ -82,21 +85,7 @@ const slotFromEvent = (event) => {
     };
 };
 
-const formatDateLabel = (isoDate) => {
-    if (!isoDate) {
-        return '—';
-    }
-
-    const [year, month, day] = isoDate.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-
-    return date.toLocaleDateString('es-MX', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-};
+const formatDateLabel = (isoDate) => formatLongDate(isoDate) || '—';
 
 const isMovableStatus = (status) => status === 'pendiente' || status === 'confirmada';
 
@@ -109,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const modalEl = document.getElementById('eventDetailModal');
     const detailModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+    bindEventHomeMap(modalEl);
     const confirmBtn = document.getElementById('confirmReservaBtn');
     const completeBtn = document.getElementById('completeReservaBtn');
     const cancelBtn = document.getElementById('cancelReservaBtn');
@@ -127,8 +117,28 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentReservaId = null;
     let currentEvent = null;
     let currentWhatsapp = '';
+    let currentSlot = { date: null, time: null, endTime: null };
+    let currentAssignment = { instructorId: '', vehicleId: '' };
+    let syncingSchedule = false;
+    let scheduleBusy = false;
     let pendingMove = null;
     let skipNextHintReset = false;
+
+    const dateField = document.getElementById('eventModalDateField');
+    const dateValueInput = document.getElementById('eventModalDateValue');
+    const dateDisplayInput = document.getElementById('eventModalDate');
+    const timeSelect = document.getElementById('eventModalTimeField')
+        ? document.getElementById('eventModalTime')
+        : null;
+    const instructorSelect = document.getElementById('eventModalInstructor');
+    const vehicleSelect = document.getElementById('eventModalVehicle');
+    const vehicleTypeEl = document.getElementById('eventModalVehicleType');
+    const canEditSchedule = Boolean(dateValueInput && timeSelect);
+    const canEditAssignment = instructorSelect?.tagName === 'SELECT' && vehicleSelect?.tagName === 'SELECT';
+
+    if (minDate && dateField) {
+        dateField.dataset.minDate = minDate;
+    }
 
     const showHint = (type, html) => {
         if (!calendarHint) {
@@ -218,23 +228,434 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const setScheduleEditable = (enabled) => {
+        dateField?.classList.toggle('is-editable', enabled);
+        dateField?.classList.toggle('is-readonly', !enabled);
+        document.getElementById('eventModalTimeField')?.classList.toggle('is-editable', enabled);
+        document.getElementById('eventModalTimeField')?.classList.toggle('is-readonly', !enabled);
+        document.getElementById('eventModalInstructorField')?.classList.toggle('is-editable', enabled);
+        document.getElementById('eventModalInstructorField')?.classList.toggle('is-readonly', !enabled);
+        document.getElementById('eventModalVehicleField')?.classList.toggle('is-editable', enabled);
+        document.getElementById('eventModalVehicleField')?.classList.toggle('is-readonly', !enabled);
+
+        if (dateDisplayInput) {
+            dateDisplayInput.disabled = !enabled;
+        }
+
+        if (timeSelect) {
+            timeSelect.disabled = !enabled;
+        }
+
+        if (canEditAssignment) {
+            instructorSelect.disabled = !enabled;
+            vehicleSelect.disabled = !enabled;
+        }
+    };
+
+    const ensureSelectValue = (select, id, label) => {
+        if (!select || select.tagName !== 'SELECT') {
+            return;
+        }
+
+        const value = id ? String(id) : '';
+
+        if (value && ![...select.options].some((option) => option.value === value)) {
+            select.add(new Option(label || value, value));
+        }
+
+        select.value = value;
+    };
+
+    const selectedOptionType = (select) => select?.selectedOptions?.[0]?.dataset?.type || '';
+
+    const fillVehicleType = (type) => {
+        if (!vehicleTypeEl) {
+            return;
+        }
+
+        const label = type || selectedOptionType(vehicleSelect) || '';
+        vehicleTypeEl.textContent = label;
+        vehicleTypeEl.classList.toggle('d-none', !label);
+    };
+
+    const syncAssignmentFields = ({ instructorId, instructor, vehicleId, vehicle, vehicleType } = {}) => {
+        currentAssignment = {
+            instructorId: instructorId ? String(instructorId) : '',
+            vehicleId: vehicleId ? String(vehicleId) : '',
+        };
+
+        if (canEditAssignment) {
+            syncingSchedule = true;
+            ensureSelectValue(instructorSelect, currentAssignment.instructorId, instructor);
+            ensureSelectValue(vehicleSelect, currentAssignment.vehicleId, vehicle);
+            fillVehicleType(vehicleType || selectedOptionType(vehicleSelect));
+            syncingSchedule = false;
+            return;
+        }
+
+        if (instructorSelect) {
+            instructorSelect.textContent = instructor || '—';
+        }
+
+        if (vehicleSelect) {
+            vehicleSelect.textContent = vehicle || '—';
+        }
+
+        fillVehicleType(vehicleType);
+    };
+
+    const optionLabelByValue = (select, value) => (
+        [...(select?.options ?? [])].find((option) => option.value === String(value || ''))?.text || '—'
+    );
+
+    const restoreAssignmentFields = () => {
+        const vehicleOption = [...(vehicleSelect?.options ?? [])]
+            .find((option) => option.value === currentAssignment.vehicleId);
+
+        syncAssignmentFields({
+            instructorId: currentAssignment.instructorId,
+            instructor: optionLabelByValue(instructorSelect, currentAssignment.instructorId),
+            vehicleId: currentAssignment.vehicleId,
+            vehicle: vehicleOption?.text || '—',
+            vehicleType: vehicleOption?.dataset?.type || '',
+        });
+    };
+
+    const saveAssignment = async (instructorId, vehicleId) => {
+        if (!currentReservaId || !confirmBaseUrl || !csrfToken) {
+            return false;
+        }
+
+        scheduleBusy = true;
+
+        try {
+            const response = await fetch(`${confirmBaseUrl}/${currentReservaId}/asignacion`, {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    instructor_id: Number(instructorId),
+                    vehicle_id: Number(vehicleId),
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                await showBookingError(data.message ?? 'No se pudo guardar el cambio.');
+                restoreAssignmentFields();
+                return false;
+            }
+
+            skipNextHintReset = true;
+            syncAssignmentFields({
+                instructorId: data.instructor_id ?? instructorId,
+                instructor: data.instructor,
+                vehicleId: data.vehicle_id ?? vehicleId,
+                vehicle: data.vehicle,
+                vehicleType: data.vehicle_type,
+            });
+
+            if (currentEvent) {
+                currentEvent.setExtendedProp('instructor', data.instructor);
+                currentEvent.setExtendedProp('instructorId', data.instructor_id);
+                currentEvent.setExtendedProp('vehicle', data.vehicle);
+                currentEvent.setExtendedProp('vehicleId', data.vehicle_id);
+                currentEvent.setExtendedProp('vehicleType', data.vehicle_type);
+            }
+
+            calendar.refetchEvents();
+            document.dispatchEvent(new CustomEvent('agenda:refresh'));
+            showHint(
+                'success',
+                `<i class="bi bi-check-circle me-1"></i> ${data.message ?? 'Se actualizó el instructor y el vehículo.'}`
+            );
+            return true;
+        } catch {
+            await showBookingError('No se pudo guardar el cambio. Inténtalo de nuevo.');
+            restoreAssignmentFields();
+            return false;
+        } finally {
+            scheduleBusy = false;
+        }
+    };
+
+    const requestAssignmentChange = async (kind, instructorId, vehicleId) => {
+        if (scheduleBusy || !currentReservaId) {
+            restoreAssignmentFields();
+            return;
+        }
+
+        scheduleBusy = true;
+
+        const from = kind === 'vehiculo'
+            ? optionLabelByValue(vehicleSelect, currentAssignment.vehicleId)
+            : optionLabelByValue(instructorSelect, currentAssignment.instructorId);
+        const to = optionText(kind === 'vehiculo' ? vehicleSelect : instructorSelect);
+
+        try {
+            const confirmed = await confirmEditClassSchedule({
+                kind,
+                from,
+                to,
+                student: document.getElementById('eventModalStudent')?.textContent,
+            });
+
+            if (!confirmed) {
+                restoreAssignmentFields();
+                return;
+            }
+
+            scheduleBusy = false;
+            await saveAssignment(instructorId, vehicleId);
+        } finally {
+            scheduleBusy = false;
+        }
+    };
+
+    const syncScheduleFields = (slot) => {
+        syncingSchedule = true;
+        currentSlot = {
+            date: slot.date || null,
+            time: slot.time ? String(slot.time).slice(0, 5) : null,
+            endTime: slot.endTime || null,
+        };
+
+        if (dateValueInput) {
+            dateValueInput.value = currentSlot.date || '';
+
+            if (currentSlot.date && dateValueInput._litepicker) {
+                dateValueInput._litepicker.setDate(currentSlot.date);
+            }
+        }
+
+        if (dateDisplayInput) {
+            if (dateDisplayInput.tagName === 'INPUT') {
+                dateDisplayInput.value = formatDateLabel(currentSlot.date);
+            } else {
+                dateDisplayInput.textContent = formatDateLabel(currentSlot.date);
+            }
+        }
+
+        if (timeSelect && timeSelect.tagName === 'SELECT') {
+            timeSelect.value = currentSlot.time || '';
+        } else if (timeSelect) {
+            const startTime = currentSlot.time ?? '—';
+            const endTime = currentSlot.endTime ?? '—';
+            timeSelect.textContent = startTime !== '—' && endTime !== '—'
+                ? `${startTime} - ${endTime}`
+                : startTime;
+        }
+
+        syncingSchedule = false;
+    };
+
+    const restoreScheduleFields = () => {
+        syncScheduleFields(currentSlot);
+    };
+
+    const saveSchedule = async (date, time) => {
+        if (!currentReservaId || !confirmBaseUrl || !csrfToken) {
+            return false;
+        }
+
+        scheduleBusy = true;
+
+        try {
+            const response = await fetch(`${confirmBaseUrl}/${currentReservaId}/reschedule`, {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ date, time }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                await showBookingError(data.message ?? 'No se pudo guardar el cambio.');
+                restoreScheduleFields();
+                return false;
+            }
+
+            skipNextHintReset = true;
+            syncScheduleFields({
+                date: data.date ?? date,
+                time: data.time ?? time,
+                endTime: data.endTime ?? addMinutes(time, CLASS_DURATION_MINUTES),
+            });
+            calendar.refetchEvents();
+            document.dispatchEvent(new CustomEvent('agenda:refresh'));
+            showHint(
+                'success',
+                `<i class="bi bi-check-circle me-1"></i> ${data.message ?? 'La clase se reprogramó correctamente.'}`
+            );
+            return true;
+        } catch {
+            await showBookingError('No se pudo guardar el cambio. Inténtalo de nuevo.');
+            restoreScheduleFields();
+            return false;
+        } finally {
+            scheduleBusy = false;
+        }
+    };
+
+    const requestScheduleChange = async (kind, nextDate, nextTime) => {
+        if (scheduleBusy || !currentReservaId) {
+            restoreScheduleFields();
+            return;
+        }
+
+        scheduleBusy = true;
+
+        const from = kind === 'horario'
+            ? formatTimeRange(currentSlot.time)
+            : formatDateLabel(currentSlot.date);
+        const to = kind === 'horario'
+            ? formatTimeRange(nextTime)
+            : formatDateLabel(nextDate);
+
+        try {
+            const confirmed = await confirmEditClassSchedule({
+                kind,
+                from,
+                to,
+                student: document.getElementById('eventModalStudent')?.textContent,
+            });
+
+            if (!confirmed) {
+                restoreScheduleFields();
+                return;
+            }
+
+            scheduleBusy = false;
+            await saveSchedule(nextDate, nextTime);
+        } finally {
+            scheduleBusy = false;
+        }
+    };
+
     const fillEventDetail = (props, slot) => {
         const student = props.student ?? '—';
         const startTime = slot.time ?? props.time ?? '—';
         const endTime = props.endTime ?? '—';
-        const instructorEl = document.getElementById('eventModalInstructor');
 
         document.getElementById('eventModalTitle').textContent = student;
         document.getElementById('eventModalStudent').textContent = student;
-        if (instructorEl) {
-            instructorEl.textContent = props.instructor ?? '—';
-        }
-        document.getElementById('eventModalVehicle').textContent = props.vehicle ?? '—';
-        document.getElementById('eventModalDate').textContent = formatDateLabel(slot.date ?? props.date);
-        document.getElementById('eventModalTime').textContent =
-            startTime !== '—' && endTime !== '—' ? `${startTime} - ${endTime}` : startTime;
         currentWhatsapp = props.whatsapp || '';
         setEventStatus(props.status, props.classNumber);
+        fillRsvp(props);
+        fillEventHomeDetails(props);
+        syncScheduleFields({
+            date: slot.date ?? props.date,
+            time: startTime === '—' ? null : startTime,
+            endTime: endTime === '—' ? null : endTime,
+        });
+        syncAssignmentFields({
+            instructorId: props.instructorId ?? props.instructor_id,
+            instructor: props.instructor,
+            vehicleId: props.vehicleId ?? props.vehicle_id,
+            vehicle: props.vehicle,
+            vehicleType: props.vehicleType ?? props.vehicle_type,
+        });
+        setScheduleEditable(canEditSchedule && isMovableStatus(props.status));
+    };
+
+    if (canEditSchedule) {
+        bindSingleDatePickers(modalEl);
+
+        dateValueInput.addEventListener('change', () => {
+            if (syncingSchedule) {
+                return;
+            }
+
+            const nextDate = dateValueInput.value;
+
+            if (!nextDate || nextDate === currentSlot.date) {
+                return;
+            }
+
+            requestScheduleChange('fecha', nextDate, currentSlot.time);
+        });
+
+        timeSelect.addEventListener('change', () => {
+            if (syncingSchedule) {
+                return;
+            }
+
+            const nextTime = timeSelect.value;
+
+            if (!nextTime || nextTime === currentSlot.time) {
+                return;
+            }
+
+            requestScheduleChange('horario', currentSlot.date, nextTime);
+        });
+
+        dateField?.addEventListener('click', (event) => {
+            if (dateDisplayInput?.disabled || event.target === dateDisplayInput) {
+                return;
+            }
+
+            dateValueInput._litepicker?.show();
+        });
+
+        modalEl?.addEventListener('hidden.bs.modal', () => {
+            dateValueInput._litepicker?.hide();
+        });
+    }
+
+    if (canEditAssignment) {
+        instructorSelect.addEventListener('change', () => {
+            if (syncingSchedule) {
+                return;
+            }
+
+            const nextInstructor = instructorSelect.value;
+
+            if (!nextInstructor || nextInstructor === currentAssignment.instructorId) {
+                restoreAssignmentFields();
+                return;
+            }
+
+            requestAssignmentChange('instructor', nextInstructor, currentAssignment.vehicleId);
+        });
+
+        vehicleSelect.addEventListener('change', () => {
+            if (syncingSchedule) {
+                return;
+            }
+
+            const nextVehicle = vehicleSelect.value;
+
+            if (!nextVehicle || nextVehicle === currentAssignment.vehicleId) {
+                restoreAssignmentFields();
+                return;
+            }
+
+            fillVehicleType(selectedOptionType(vehicleSelect));
+            requestAssignmentChange('vehiculo', currentAssignment.instructorId, nextVehicle);
+        });
+    }
+
+    const fillRsvp = (props) => {
+        const wrap = document.getElementById('eventModalRsvpWrap');
+        const valueEl = document.getElementById('eventModalRsvp');
+        const label = props.rsvpLabel || props.rsvp_label || '';
+        const response = props.rsvp || props.rsvp_response || '';
+
+        if (!wrap || !valueEl) {
+            return;
+        }
+
+        wrap.classList.toggle('d-none', !label);
+        valueEl.textContent = label || '—';
+        valueEl.dataset.rsvp = response;
     };
 
     const toggleAction = (btn, visible) => {
@@ -245,7 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleAction(confirmBtn, status === 'pendiente');
         toggleAction(completeBtn, status === 'pendiente' || status === 'confirmada');
         toggleAction(cancelBtn, status === 'pendiente' || status === 'confirmada');
-        toggleAction(whatsappBtn, Boolean(currentWhatsapp));
+        toggleAction(whatsappBtn, Boolean(currentWhatsapp) && (status === 'pendiente' || status === 'confirmada'));
 
         const hasVisible = [confirmBtn, completeBtn, cancelBtn, whatsappBtn].some(
             (btn) => btn && !btn.classList.contains('d-none')
@@ -275,14 +696,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (currentEvent) {
             const colors = {
-                confirmada: { bg: '#2563eb', border: '#1d4ed8', class: 'fc-event-confirmada' },
-                completada: { bg: '#16a34a', border: '#15803d', class: 'fc-event-completada' },
-                cancelada: { bg: '#dc2626', border: '#b91c1c', class: 'fc-event-cancelada' },
+                confirmada: (() => {
+                    const theme = getComputedStyle(document.documentElement);
+
+                    return {
+                        bg: theme.getPropertyValue('--brand-accent').trim() || '#F7E018',
+                        border: theme.getPropertyValue('--brand-accent-hover').trim() || '#E0C80A',
+                        text: theme.getPropertyValue('--brand-accent-ink').trim() || '#201E1F',
+                        class: 'fc-event-confirmada',
+                    };
+                })(),
+                completada: { bg: '#16a34a', border: '#15803d', text: '#ffffff', class: 'fc-event-completada' },
+                cancelada: { bg: '#dc2626', border: '#b91c1c', text: '#ffffff', class: 'fc-event-cancelada' },
             }[successStatus];
 
             if (colors) {
                 currentEvent.setProp('backgroundColor', colors.bg);
                 currentEvent.setProp('borderColor', colors.border);
+                currentEvent.setProp('textColor', colors.text);
                 currentEvent.setProp('classNames', [colors.class]);
                 currentEvent.setExtendedProp('status', successStatus);
 
@@ -298,6 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateStatusButtons(successStatus);
         calendar.refetchEvents();
+        document.dispatchEvent(new CustomEvent('agenda:refresh'));
         return true;
     };
 
@@ -496,33 +928,45 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     whatsappBtn?.addEventListener('click', async () => {
+        if (!currentReservaId || !confirmBaseUrl || !csrfToken) {
+            return;
+        }
+
         if (!currentWhatsapp) {
             await showBookingError('Este alumno no tiene un teléfono válido para enviar por WhatsApp.');
             return;
         }
 
-        const student = document.getElementById('eventModalStudent')?.textContent || 'alumno';
-        const date = document.getElementById('eventModalDate')?.textContent || '—';
-        const time = document.getElementById('eventModalTime')?.textContent || '—';
-        const instructor = document.getElementById('eventModalInstructor')?.textContent || '—';
-        const vehicle = document.getElementById('eventModalVehicle')?.textContent || '—';
-        const status = document.getElementById('eventModalStatus')?.textContent || '—';
-        const message = [
-            `Hola, ${student}`,
-            '',
-            'Te recordamos tu clase de Autoescuela MaxPi:',
-            `Fecha: ${date}`,
-            `Horario: ${time}`,
-            `Instructor: ${instructor}`,
-            `Vehículo: ${vehicle}`,
-            `Estado: ${status}`,
-        ].join('\n');
+        whatsappBtn.disabled = true;
+        const originalHtml = whatsappBtn.innerHTML;
+        whatsappBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-        window.open(
-            `https://wa.me/${currentWhatsapp}?text=${encodeURIComponent(message)}`,
-            '_blank',
-            'noopener,noreferrer'
-        );
+        try {
+            const response = await fetch(`${confirmBaseUrl}/${currentReservaId}/recordatorio`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    Accept: 'application/json',
+                },
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                await showBookingError(data.message ?? 'No se pudo armar el recordatorio.');
+                return;
+            }
+
+            window.open(
+                `https://wa.me/${data.whatsapp}?text=${encodeURIComponent(data.message)}`,
+                '_blank',
+                'noopener,noreferrer'
+            );
+        } catch {
+            await showBookingError('No se pudo armar el recordatorio. Inténtalo de nuevo.');
+        } finally {
+            whatsappBtn.disabled = false;
+            whatsappBtn.innerHTML = originalHtml;
+        }
     });
 
     confirmBtn?.addEventListener('click', async () => {
@@ -562,8 +1006,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const confirmed = await confirmCancelClass({
             student: document.getElementById('eventModalStudent')?.textContent,
-            date: document.getElementById('eventModalDate')?.textContent,
-            time: document.getElementById('eventModalTime')?.textContent,
+            date: formatDateLabel(currentSlot.date),
+            time: formatTimeRange(currentSlot.time),
         });
 
         if (!confirmed) {
@@ -663,4 +1107,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     calendar.render();
+
+    document.addEventListener('agenda:open-class', (event) => {
+        const item = event.detail;
+
+        if (!detailModal || !item?.id) {
+            return;
+        }
+
+        currentReservaId = item.id;
+        currentEvent = calendar.getEventById(String(item.id)) || null;
+        fillEventDetail({
+            student: item.student,
+            instructor: item.instructor,
+            instructorId: item.instructor_id,
+            vehicle: item.vehicle,
+            vehicleId: item.vehicle_id,
+            vehicleType: item.vehicle_type,
+            status: item.status,
+            classNumber: item.class_number,
+            date: item.date,
+            time: item.time,
+            endTime: item.end_time,
+            whatsapp: item.whatsapp,
+            isHomeClass: item.is_home,
+            meetingPoint: item.meeting_point,
+            meetingLat: item.meeting_lat,
+            meetingLng: item.meeting_lng,
+            notes: item.notes,
+            rsvp: item.rsvp,
+            rsvp_label: item.rsvp_label,
+        }, {
+            date: item.date,
+            time: item.time,
+            endTime: item.end_time,
+        });
+        updateStatusButtons(item.status);
+        detailModal.show();
+    });
 });

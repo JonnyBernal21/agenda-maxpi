@@ -3,12 +3,24 @@
 @section('title', 'Mis clases — ' . config('app.name'))
 
 @section('content')
-    <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3">
-        <div>
-            <h1 class="page-title mb-1">Hola, {{ $instructor->name }}</h1>
-            <p class="page-subtitle mb-0">
-                Revisa tus clases asignadas y horarios de la semana.
-            </p>
+    @php
+        $todayLabel = mb_convert_case(
+            \Illuminate\Support\Carbon::now('America/Mexico_City')->locale('es')->isoFormat('dddd, D [de] MMMM [de] YYYY'),
+            MB_CASE_TITLE,
+            'UTF-8'
+        );
+    @endphp
+
+    <div class="page-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+        @include('partials.page-greeting', [
+            'name' => $instructor->name,
+            'subtitle' => 'Aquí tienes el resumen de tus clases de hoy.',
+        ])
+        <div class="dashboard-toolbar">
+            <span class="dashboard-toolbar__date">
+                <i class="bi bi-calendar3"></i>
+                {{ $todayLabel }}
+            </span>
         </div>
     </div>
 
@@ -16,34 +28,40 @@
         <div class="col-6 col-lg-3">
             <div class="stat-card">
                 <div class="stat-card__icon"><i class="bi bi-calendar-day"></i></div>
-                <p class="stat-card__label">Hoy</p>
+                <p class="stat-card__label">Clases de hoy</p>
                 <p class="stat-card__value">{{ $classesToday }}</p>
             </div>
         </div>
         <div class="col-6 col-lg-3">
             <div class="stat-card">
-                <div class="stat-card__icon"><i class="bi bi-calendar-week"></i></div>
-                <p class="stat-card__label">Esta semana</p>
-                <p class="stat-card__value">{{ $classesThisWeek }}</p>
+                <div class="stat-card__icon"><i class="bi bi-check2-circle"></i></div>
+                <p class="stat-card__label">Clases completadas</p>
+                <p class="stat-card__value">{{ $completedCount }}</p>
             </div>
         </div>
         <div class="col-6 col-lg-3">
             <div class="stat-card">
                 <div class="stat-card__icon"><i class="bi bi-hourglass-split"></i></div>
-                <p class="stat-card__label">Pendientes</p>
+                <p class="stat-card__label">Pendientes de hoy</p>
                 <p class="stat-card__value">{{ $pendingCount }}</p>
             </div>
         </div>
         <div class="col-6 col-lg-3">
             <div class="stat-card">
-                <div class="stat-card__icon"><i class="bi bi-check2-circle"></i></div>
-                <p class="stat-card__label">Confirmadas</p>
-                <p class="stat-card__value">{{ $confirmedCount }}</p>
+                <div class="stat-card__icon"><i class="bi bi-calendar-week"></i></div>
+                <p class="stat-card__label">Clases de la semana</p>
+                <p class="stat-card__value">{{ $classesThisWeek }}</p>
             </div>
         </div>
     </div>
 
-    <div class="panel-card">
+    @include('partials.day-agenda', [
+        'dayAgenda' => $dayAgenda,
+        'agendaUrl' => route('instructor.agenda'),
+        'canStartClass' => true,
+    ])
+
+    <div class="panel-card dashboard-calendar">
         <div class="panel-card__header">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <div class="d-flex align-items-start gap-3">
@@ -70,7 +88,7 @@
         </div>
     </div>
 
-    @include('partials.event-detail-modal')
+    @include('partials.event-detail-modal', ['showStartClass' => true])
 @endsection
 
 @push('scripts')

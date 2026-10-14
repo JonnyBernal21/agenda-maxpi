@@ -12,12 +12,11 @@ class LoginPortalResolver
      */
     public static function resolve(string $email): ?array
     {
-        if (User::query()->where('email', $email)->exists()) {
-            return self::portal('web', 'administrador', 'login');
-        }
-
-        if (Instructor::query()->where('email', $email)->exists()) {
-            return self::portal('instructor', 'instructor', 'instructor.login');
+        if (
+            User::query()->where('email', $email)->exists()
+            || Instructor::query()->where('email', $email)->exists()
+        ) {
+            return self::portal('web', 'sistema', 'login');
         }
 
         return null;

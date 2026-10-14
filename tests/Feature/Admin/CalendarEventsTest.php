@@ -110,6 +110,9 @@ class CalendarEventsTest extends TestCase
         $event = collect($response->json())->firstWhere('id', $reserva->id);
 
         $this->assertTrue($event['extendedProps']['isHomeClass']);
+        $this->assertEquals($instructor->id, $event['extendedProps']['instructorId']);
+        $this->assertEquals($vehicle->id, $event['extendedProps']['vehicleId']);
+        $this->assertSame($vehicle->typeLabel(), $event['extendedProps']['vehicleType']);
         $this->assertSame('Portón negro, tocar el timbre 3', $event['extendedProps']['meetingPoint']);
         $this->assertEqualsWithDelta(19.282608, (float) $event['extendedProps']['meetingLat'], 0.000001);
         $this->assertEqualsWithDelta(-99.655701, (float) $event['extendedProps']['meetingLng'], 0.000001);

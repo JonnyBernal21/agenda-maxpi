@@ -240,7 +240,7 @@
                             <span class="table-badge table-badge--paid">Liquidado</span>
                         @else
                             <span class="table-badge table-badge--due">Debe ${{ number_format($balanceDue, 2) }}</span>
-                            @can('students.edit')
+                            @can('students.pay')
                             <button
                                 type="button"
                                 class="btn student-abonar-btn js-student-pay"

@@ -20,6 +20,7 @@ final class PermissionCatalog
             'students.edit' => 'Editar alumnos',
             'students.delete' => 'Eliminar alumnos',
             'students.discount' => 'Aplicar descuentos',
+            'students.pay' => 'Registrar abonos',
             'instructors.manage' => 'Gestionar instructores',
             'vehicles.manage' => 'Gestionar vehículos',
             'courses.manage' => 'Gestionar cursos',

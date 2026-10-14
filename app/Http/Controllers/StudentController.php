@@ -345,6 +345,7 @@ class StudentController extends Controller
                 'vehicle' => $reserva->vehicle
                     ? trim($reserva->vehicle->modelo.' ('.$reserva->vehicle->plate.')')
                     : '—',
+                'vehicle_type' => $reserva->vehicle?->typeLabel() ?: '—',
                 'can_edit' => $editable,
                 'update_url' => $editable ? route('admin.reservas.assignment', $reserva) : null,
             ];

@@ -1,9 +1,9 @@
 @php
-    $brand = '#111111';
-    $yellow = '#f5c400';
-    $muted = '#64748b';
-    $border = '#e2e8f0';
-    $bg = '#f4f4f5';
+    $brand = '#201E1F';
+    $yellow = '#F7E018';
+    $muted = '#6F6C6B';
+    $border = '#DDDCDA';
+    $bg = '#F5F5F3';
     $logoPath = public_path('logo.png');
     $canEmbed = isset($message) && is_object($message) && method_exists($message, 'embed');
     $logoSrc = $canEmbed && is_file($logoPath)

@@ -77,6 +77,59 @@ class StudentPermissionsTest extends TestCase
         $this->assertSoftDeleted('students', ['id' => $student->id]);
     }
 
+    public function test_edit_permission_does_not_allow_registering_payments(): void
+    {
+        $user = $this->userWithPermissions(['students.view', 'students.edit']);
+        $student = $this->makeStudent([
+            'payment_total' => 4000,
+            'payment_plan' => 2,
+            'payment_initial' => 1000,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('admin.students.index'))
+            ->assertOk()
+            ->assertDontSee('js-student-pay', false);
+
+        $this->actingAs($user)
+            ->post(route('admin.students.payments.store', $student), [
+                '_form' => 'student-payment',
+                'amount' => 500,
+                'payment_method' => Student::PAYMENT_CASH,
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_pay_permission_allows_registering_an_abono(): void
+    {
+        $user = $this->userWithPermissions(['students.view', 'students.pay']);
+        $student = $this->makeStudent([
+            'payment_total' => 4000,
+            'payment_plan' => 2,
+            'payment_initial' => 1000,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('admin.students.index'))
+            ->assertOk()
+            ->assertSee('js-student-pay', false)
+            ->assertSee('Abonar');
+
+        $this->actingAs($user)
+            ->from(route('admin.students.index'))
+            ->post(route('admin.students.payments.store', $student), [
+                '_form' => 'student-payment',
+                'amount' => 500,
+                'payment_method' => Student::PAYMENT_CASH,
+            ])
+            ->assertRedirect(route('admin.students.index'));
+
+        $this->assertDatabaseHas('student_payments', [
+            'student_id' => $student->id,
+            'amount' => 500.00,
+        ]);
+    }
+
     public function test_manage_permission_is_required_to_create_a_student(): void
     {
         $user = $this->userWithPermissions(['students.view', 'students.edit']);
@@ -120,7 +173,10 @@ class StudentPermissionsTest extends TestCase
         return User::factory()->create(['role_id' => $role->id]);
     }
 
-    private function makeStudent(): Student
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function makeStudent(array $overrides = []): Student
     {
         $course = Course::query()->create([
             'name' => 'Curso básico',
@@ -130,14 +186,14 @@ class StudentPermissionsTest extends TestCase
             'num_classes' => 5,
         ]);
 
-        return Student::factory()->create([
+        return Student::factory()->create(array_merge([
             'course_id' => $course->id,
             'name' => 'Roberto',
             'last_name' => 'Valdez',
             'email' => 'roberto.permisos@example.com',
             'payment_method' => Student::PAYMENT_CASH,
             'payment_plan' => 1,
-        ]);
+        ], $overrides));
     }
 
     /**

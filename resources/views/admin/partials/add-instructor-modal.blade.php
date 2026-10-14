@@ -38,7 +38,7 @@
                     @endif
 
                     <p class="small text-muted mb-3 d-none" id="instructorFormHint">
-                        En edición los documentos actuales se conservan si no subes uno nuevo.
+                        En edición los documentos actuales se conservan si no subes uno nuevo. La contraseña solo cambia si escribes una nueva.
                     </p>
 
                     <div class="row g-3">
@@ -104,6 +104,42 @@
                                 required
                             >
                             @error('phone')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-12">
+                            <hr class="my-1">
+                            <p class="fw-semibold mb-1">Acceso al sistema</p>
+                            <p class="small text-muted mb-0">El instructor entra con este correo y contraseña en la misma pantalla de inicio de sesión.</p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="instructor_password" class="form-label">Contraseña</label>
+                            <input
+                                type="password"
+                                id="instructor_password"
+                                name="password"
+                                class="form-control @error('password') is-invalid @enderror"
+                                autocomplete="new-password"
+                                required
+                            >
+                            @error('password')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <p class="small text-muted mt-1 mb-0 d-none" id="instructorPasswordHint">Si aún no tiene acceso, escribe una contraseña. Si ya entra al sistema, déjala vacía para no cambiarla.</p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="instructor_password_confirmation" class="form-label">Confirmar contraseña</label>
+                            <input
+                                type="password"
+                                id="instructor_password_confirmation"
+                                name="password_confirmation"
+                                class="form-control @error('password_confirmation') is-invalid @enderror"
+                                autocomplete="new-password"
+                            >
+                            @error('password_confirmation')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>

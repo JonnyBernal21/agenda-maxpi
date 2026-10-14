@@ -8,12 +8,59 @@ import esLocale from '@fullcalendar/core/locales/es';
 import * as bootstrap from 'bootstrap';
 import { rollingWeekToolbar, rollingWeekViews } from './calendar-rolling-week';
 import { calendarEventContent, homeClassNoteHandlers } from './calendar-event-content';
+import { bindEventHomeMap, fillEventHomeDetails } from './event-detail-home';
+import { initDayAgenda } from './day-agenda';
 
 const statusLabels = {
     pendiente: 'Pendiente',
     confirmada: 'Confirmada',
+    en_curso: 'En curso',
     completada: 'Completada',
     cancelada: 'Cancelada',
+};
+
+const fillStartActions = ({ canStart, canContinue, canViewEvaluation, startUrl, formUrl, summaryUrl }) => {
+    const startForm = document.getElementById('startClassForm');
+    const startBtn = document.getElementById('startClassBtn');
+    const continueBtn = document.getElementById('continueClassBtn');
+    const viewBtn = document.getElementById('viewEvaluationBtn');
+
+    startForm?.classList.add('d-none');
+    continueBtn?.classList.add('d-none');
+    viewBtn?.classList.add('d-none');
+
+    if (canStart && startUrl && startForm && startBtn) {
+        startForm.action = startUrl;
+        startBtn.textContent = 'Iniciar';
+        startForm.classList.remove('d-none');
+        return;
+    }
+
+    if (canContinue && formUrl && continueBtn) {
+        continueBtn.href = formUrl;
+        continueBtn.classList.remove('d-none');
+        return;
+    }
+
+    if (canViewEvaluation && summaryUrl && viewBtn) {
+        viewBtn.href = summaryUrl;
+        viewBtn.classList.remove('d-none');
+    }
+};
+
+const fillRsvp = (props) => {
+    const wrap = document.getElementById('eventModalRsvpWrap');
+    const valueEl = document.getElementById('eventModalRsvp');
+    const label = props?.rsvpLabel || props?.rsvp_label || '';
+    const response = props?.rsvp || props?.rsvp_response || '';
+
+    if (!wrap || !valueEl) {
+        return;
+    }
+
+    wrap.classList.toggle('d-none', !label);
+    valueEl.textContent = label || '—';
+    valueEl.dataset.rsvp = response;
 };
 
 const pad = (value) => String(value).padStart(2, '0');
@@ -58,6 +105,8 @@ const formatDateLabel = (isoDate) => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    initDayAgenda();
+
     const calendarEl = document.getElementById('instructor-calendar');
 
     if (!calendarEl) {
@@ -66,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const modalEl = document.getElementById('eventDetailModal');
     const detailModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+    bindEventHomeMap(modalEl);
     const calendarHint = document.getElementById('instructorCalendarHint');
 
     const showHint = (type, html) => {
@@ -131,6 +181,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('eventModalTitle').textContent = student;
             document.getElementById('eventModalStudent').textContent = student;
             document.getElementById('eventModalVehicle').textContent = props.vehicle ?? '—';
+            const vehicleTypeEl = document.getElementById('eventModalVehicleType');
+            const vehicleType = props.vehicleType || '';
+            if (vehicleTypeEl) {
+                vehicleTypeEl.textContent = vehicleType;
+                vehicleTypeEl.classList.toggle('d-none', !vehicleType);
+            }
             document.getElementById('eventModalDate').textContent = formatDateLabel(slot.date ?? props.date);
             document.getElementById('eventModalTime').textContent =
                 startTime !== '—' && endTime !== '—' ? `${startTime} - ${endTime}` : startTime;
@@ -145,8 +201,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (badge) {
                 badge.textContent = statusLabels[status] ?? status ?? '—';
-                badge.dataset.status = status;
+                badge.dataset.status = status === 'en_curso' ? 'en_curso' : status;
             }
+
+            fillRsvp(props);
+            fillEventHomeDetails(props);
+
+            fillStartActions({
+                canStart: Boolean(props.canStart),
+                canContinue: Boolean(props.canContinue),
+                canViewEvaluation: Boolean(props.canViewEvaluation),
+                startUrl: props.startUrl,
+                formUrl: props.formUrl,
+                summaryUrl: props.summaryUrl,
+            });
 
             resetHint();
             detailModal.show();
@@ -166,4 +234,55 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     calendar.render();
+
+    document.addEventListener('agenda:open-class', (event) => {
+        const item = event.detail;
+
+        if (!detailModal || !item) {
+            return;
+        }
+
+        const student = item.student ?? '—';
+        const status = item.status ?? '';
+        const classNumber = item.class_number;
+        const kicker = document.getElementById('eventModalKicker');
+        const badge = document.getElementById('eventModalStatus');
+
+        document.getElementById('eventModalTitle').textContent = student;
+        document.getElementById('eventModalStudent').textContent = student;
+        document.getElementById('eventModalVehicle').textContent = item.vehicle ?? '—';
+        const vehicleTypeEl = document.getElementById('eventModalVehicleType');
+        const vehicleType = item.vehicle_type || '';
+        if (vehicleTypeEl) {
+            vehicleTypeEl.textContent = vehicleType;
+            vehicleTypeEl.classList.toggle('d-none', !vehicleType);
+        }
+        document.getElementById('eventModalDate').textContent = formatDateLabel(item.date);
+        document.getElementById('eventModalTime').textContent = item.time_label
+            || `${item.time ?? '—'} - ${item.end_time ?? '—'}`;
+
+        if (kicker) {
+            kicker.textContent = classNumber ? `Clase ${classNumber}` : 'Detalle de clase';
+        }
+
+        if (badge) {
+            badge.textContent = statusLabels[status] ?? item.status_label ?? '—';
+            badge.dataset.status = status === 'en_curso' || item.live_status === 'en_curso' ? 'en_curso' : status;
+        }
+
+        fillRsvp(item);
+        fillEventHomeDetails(item);
+
+        fillStartActions({
+            canStart: Boolean(item.can_start),
+            canContinue: Boolean(item.can_continue),
+            canViewEvaluation: Boolean(item.can_view_evaluation),
+            startUrl: item.start_url,
+            formUrl: item.form_url,
+            summaryUrl: item.summary_url,
+        });
+
+        resetHint();
+        detailModal.show();
+    });
 });

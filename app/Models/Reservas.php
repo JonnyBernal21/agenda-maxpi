@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Reservas extends Model
 {
@@ -90,7 +91,20 @@ class Reservas extends Model
         'date',
         'time',
         'status',
+        'rsvp_token',
+        'rsvp_response',
+        'rsvp_at',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'rsvp_at' => 'datetime',
+        ];
+    }
 
     public function student(): BelongsTo
     {
@@ -105,6 +119,20 @@ class Reservas extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class, 'vehicle_id')->withTrashed();
+    }
+
+    public function evaluation(): HasOne
+    {
+        return $this->hasOne(ClassEvaluation::class, 'reserva_id');
+    }
+
+    public function rsvpLabel(): ?string
+    {
+        return match ($this->rsvp_response) {
+            'asistira' => 'Asistirá',
+            'no_asistira' => 'No asistirá',
+            default => null,
+        };
     }
 
     /**

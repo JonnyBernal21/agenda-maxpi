@@ -84,7 +84,7 @@
             <th align="left" style="padding:10px 8px;line-height:1.3;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;">Día</th>
             <th align="left" style="padding:10px 8px;line-height:1.3;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;">Fecha</th>
             <th align="left" style="padding:10px 8px;line-height:1.3;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;">Horario</th>
-            <th align="left" style="padding:10px 8px;line-height:1.3;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;">Vehículo</th>
+            <th align="left" style="padding:10px 8px;line-height:1.3;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;">Tipo</th>
         </tr>
         @foreach ($classes as $index => $class)
             <tr style="background:{{ $index % 2 === 0 ? '#ffffff' : '#fafafa' }};">
@@ -103,7 +103,7 @@
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid {{ $border }};border-radius:6px;overflow:hidden;border-collapse:collapse;">
         <tr>
-            <td style="width:4px;background:#f5c400;font-size:0;line-height:0;">&nbsp;</td>
+            <td style="width:4px;background:#F7E018;font-size:0;line-height:0;">&nbsp;</td>
             <td style="padding:16px 18px 8px;background:#fafafa;">
                 <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:{{ $brand }};">
                     Términos y condiciones
@@ -114,7 +114,7 @@
             </td>
         </tr>
         <tr>
-            <td style="width:4px;background:#f5c400;font-size:0;line-height:0;">&nbsp;</td>
+            <td style="width:4px;background:#F7E018;font-size:0;line-height:0;">&nbsp;</td>
             <td style="padding:0 18px 14px;background:#fafafa;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
                     <tr>

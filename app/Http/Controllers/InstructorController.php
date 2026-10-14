@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Instructor;
+use App\Services\InstructorAccountService;
 use App\Support\UploadedDocument;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -14,6 +16,10 @@ use Illuminate\Validation\Rule;
 
 class InstructorController extends Controller
 {
+    public function __construct(
+        private readonly InstructorAccountService $accounts,
+    ) {}
+
     public function store(Request $request): RedirectResponse
     {
         UploadedDocument::assertValid($request, $this->documentFields());
@@ -23,23 +29,16 @@ class InstructorController extends Controller
             $this->messages(),
         );
 
-        $payload = collect($validated)->except([
-            'photo',
-            'dni_front',
-            'dni_back',
-            'address_proof',
-        ])->all();
+        $payload = $this->instructorPayload($validated, $request);
 
-        $payload['photo_path'] = $this->storeDocument($request->file('photo'), 'photo');
-        $payload['dni_front_path'] = $this->storeDocument($request->file('dni_front'), 'dni_front');
-        $payload['dni_back_path'] = $this->storeDocument($request->file('dni_back'), 'dni_back');
-        $payload['address_proof_path'] = $this->storeDocument($request->file('address_proof'), 'address_proof');
-
-        Instructor::query()->create($payload);
+        DB::transaction(function () use ($request, $payload): void {
+            $instructor = Instructor::query()->create($payload);
+            $this->accounts->sync($instructor, $request->input('password'));
+        });
 
         return redirect()
             ->to(URL::previous() ?: route('admin.instructors.index'))
-            ->with('success', 'Instructor registrado correctamente.');
+            ->with('success', 'Instructor registrado. Ya puede entrar con su correo en el inicio de sesión.');
     }
 
     public function update(Request $request, Instructor $instructor): RedirectResponse
@@ -51,19 +50,17 @@ class InstructorController extends Controller
             $this->messages(),
         );
 
-        $payload = collect($validated)->except([
-            'photo',
-            'dni_front',
-            'dni_back',
-            'address_proof',
-        ])->all();
+        $previousEmail = $instructor->email;
+        $payload = $this->instructorPayload($validated, $request, $instructor);
 
-        $payload['photo_path'] = $this->replaceDocument($request, 'photo', $instructor->photo_path);
-        $payload['dni_front_path'] = $this->replaceDocument($request, 'dni_front', $instructor->dni_front_path);
-        $payload['dni_back_path'] = $this->replaceDocument($request, 'dni_back', $instructor->dni_back_path);
-        $payload['address_proof_path'] = $this->replaceDocument($request, 'address_proof', $instructor->address_proof_path);
-
-        $instructor->update($payload);
+        DB::transaction(function () use ($request, $instructor, $payload, $previousEmail): void {
+            $instructor->update($payload);
+            $this->accounts->sync(
+                $instructor->fresh(),
+                $request->filled('password') ? $request->input('password') : null,
+                $previousEmail,
+            );
+        });
 
         return redirect()
             ->to(URL::previous() ?: route('admin.instructors.index'))
@@ -73,11 +70,48 @@ class InstructorController extends Controller
     public function destroy(Instructor $instructor): RedirectResponse
     {
         $name = $instructor->fullName();
-        $instructor->delete();
+
+        DB::transaction(function () use ($instructor): void {
+            $this->accounts->delete($instructor);
+            $instructor->delete();
+        });
 
         return redirect()
             ->to(URL::previous() ?: route('admin.instructors.index'))
             ->with('success', "Se eliminó a {$name} de la lista.");
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function instructorPayload(array $validated, Request $request, ?Instructor $instructor = null): array
+    {
+        $payload = collect($validated)->except([
+            'photo',
+            'dni_front',
+            'dni_back',
+            'address_proof',
+            'password_confirmation',
+        ])->all();
+
+        if (! filled($payload['password'] ?? null)) {
+            unset($payload['password']);
+        }
+
+        if ($instructor) {
+            $payload['photo_path'] = $this->replaceDocument($request, 'photo', $instructor->photo_path);
+            $payload['dni_front_path'] = $this->replaceDocument($request, 'dni_front', $instructor->dni_front_path);
+            $payload['dni_back_path'] = $this->replaceDocument($request, 'dni_back', $instructor->dni_back_path);
+            $payload['address_proof_path'] = $this->replaceDocument($request, 'address_proof', $instructor->address_proof_path);
+        } else {
+            $payload['photo_path'] = $this->storeDocument($request->file('photo'), 'photo');
+            $payload['dni_front_path'] = $this->storeDocument($request->file('dni_front'), 'dni_front');
+            $payload['dni_back_path'] = $this->storeDocument($request->file('dni_back'), 'dni_back');
+            $payload['address_proof_path'] = $this->storeDocument($request->file('address_proof'), 'address_proof');
+        }
+
+        return $payload;
     }
 
     /**
@@ -86,6 +120,7 @@ class InstructorController extends Controller
     private function rules(?Instructor $instructor = null): array
     {
         $fileRule = $instructor ? 'nullable' : 'required';
+        $linkedUserId = $instructor ? $this->accounts->linkedUser($instructor)?->id : null;
 
         return [
             'name' => ['required', 'string', 'max:255'],
@@ -97,6 +132,13 @@ class InstructorController extends Controller
                 $instructor
                     ? Rule::unique('instructors', 'email')->ignore($instructor->id)
                     : Rule::unique('instructors', 'email'),
+                Rule::unique('users', 'email')->ignore($linkedUserId),
+            ],
+            'password' => [
+                ($instructor && $linkedUserId) ? 'nullable' : 'required',
+                'string',
+                'min:8',
+                'confirmed',
             ],
             'phone' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:255'],
@@ -133,6 +175,10 @@ class InstructorController extends Controller
             'address_proof.mimes' => 'El comprobante debe ser JPG, PNG, WEBP o PDF.',
             'address_proof.max' => 'El comprobante no puede pesar más de 8 MB.',
             'address_proof.uploaded' => 'No se pudo subir el comprobante. Revisa formato (JPG, PNG, WEBP o PDF) y tamaño (máx. 8 MB).',
+            'password.required' => 'Define una contraseña para que el instructor pueda entrar.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'La confirmación de la contraseña no coincide.',
+            'email.unique' => 'Este correo ya está registrado. Usa el correo propio del instructor.',
         ];
     }
 

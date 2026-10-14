@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Reservas;
 use App\Models\Student;
+use App\Services\ClassReminderService;
 use App\Services\ReservaAvailabilityService;
 use App\Services\SameDayScheduleCutoff;
 use App\Services\StudentScheduleService;
@@ -24,6 +25,7 @@ class ReservaController extends Controller
         private readonly ReservaAvailabilityService $availability,
         private readonly StudentScheduleService $schedules,
         private readonly SameDayScheduleCutoff $sameDayCutoff,
+        private readonly ClassReminderService $reminders,
     ) {}
 
     public function store(Request $request): RedirectResponse
@@ -264,6 +266,19 @@ class ReservaController extends Controller
             ->with('success', $message);
     }
 
+    public function reminder(Reservas $reserva): JsonResponse
+    {
+        $payload = $this->reminders->payload($reserva);
+
+        if (! $payload) {
+            return response()->json([
+                'message' => 'Este alumno no tiene un teléfono válido para WhatsApp.',
+            ], 422);
+        }
+
+        return response()->json($payload);
+    }
+
     public function confirm(Reservas $reserva): JsonResponse
     {
         if ($reserva->status !== 'pendiente') {
@@ -282,9 +297,9 @@ class ReservaController extends Controller
 
     public function complete(Reservas $reserva): JsonResponse
     {
-        if (! in_array($reserva->status, ['pendiente', 'confirmada'], true)) {
+        if (! in_array($reserva->status, ['pendiente', 'confirmada', 'en_curso'], true)) {
             return response()->json([
-                'message' => 'Solo se pueden completar citas pendientes o confirmadas.',
+                'message' => 'Solo se pueden completar citas pendientes, confirmadas o en curso.',
             ], 422);
         }
 
@@ -368,6 +383,7 @@ class ReservaController extends Controller
             'vehicle' => $reserva->vehicle
                 ? trim($reserva->vehicle->modelo.' ('.$reserva->vehicle->plate.')')
                 : '—',
+            'vehicle_type' => $reserva->vehicle?->typeLabel() ?: null,
         ]);
     }
 

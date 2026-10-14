@@ -333,6 +333,38 @@ class Student extends Authenticatable
         return 0.0;
     }
 
+    public function nextInstallmentAmount(): float
+    {
+        $balance = $this->balanceDue();
+
+        if ($balance <= 0) {
+            return 0.0;
+        }
+
+        $suggested = $this->suggestedAbonoAmount();
+
+        if ($suggested > 0) {
+            return round(min($suggested, $balance), 2);
+        }
+
+        if ($this->isInstallmentPlan()) {
+            $parts = max(1, (int) $this->payment_plan);
+
+            return round(min($balance, (float) $this->payment_total / $parts), 2);
+        }
+
+        return $balance;
+    }
+
+    public function initials(): string
+    {
+        return collect(preg_split('/\s+/', $this->fullName()))
+            ->filter()
+            ->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))
+            ->take(2)
+            ->implode('');
+    }
+
     public function recordPayment(?string $paidAt = null): ?StudentPayment
     {
         $amount = $this->firstPaymentAmount();

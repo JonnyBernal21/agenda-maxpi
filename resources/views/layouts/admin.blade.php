@@ -5,7 +5,7 @@
 @section('body')
     @include('layouts.partials.admin-navbar')
 
-    <main class="container py-4 py-md-5">
+    <main class="app-content container-fluid py-3 py-lg-4">
         @if (session('success'))
             <div
                 id="app-flash"
@@ -28,7 +28,7 @@
     @canany(['students.manage', 'students.edit'])
         @include('admin.partials.add-student-modal')
     @endcanany
-    @can('students.edit')
+    @can('students.pay')
         @include('admin.partials.student-payment-modal')
     @endcan
     @canany(['students.view', 'students.manage', 'students.edit'])

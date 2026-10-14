@@ -44,6 +44,7 @@ class CalendarController extends Controller
                 $vehicleLabel = $reserva->vehicle
                     ? "{$reserva->vehicle->modelo} ({$reserva->vehicle->plate})"
                     : 'Vehículo';
+                $vehicleType = $reserva->vehicle?->typeLabel() ?: null;
 
                 $colors = ReservaCalendarColors::forStatus($reserva->status);
                 $movable = in_array($reserva->status, ['pendiente', 'confirmada'], true);
@@ -70,7 +71,10 @@ class CalendarController extends Controller
                         'isAvailable' => false,
                         'student' => $studentName,
                         'instructor' => $instructorName,
+                        'instructorId' => $reserva->instructor_id ? (int) $reserva->instructor_id : null,
                         'vehicle' => $vehicleLabel,
+                        'vehicleId' => $reserva->vehicle_id ? (int) $reserva->vehicle_id : null,
+                        'vehicleType' => $vehicleType,
                         'classNumber' => $classNumber,
                         'isHomeClass' => $isHomeClass,
                         ...($reserva->student?->calendarHomeProps() ?? [
@@ -86,6 +90,8 @@ class CalendarController extends Controller
                         'endTime' => date('H:i', strtotime($reserva->endsAt())),
                         'phone' => $reserva->student?->phone,
                         'whatsapp' => WhatsAppNumber::digits($reserva->student?->phone),
+                        'rsvp' => $reserva->rsvp_response,
+                        'rsvpLabel' => $reserva->rsvpLabel(),
                     ],
                 ];
             });

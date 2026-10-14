@@ -19,7 +19,7 @@
                         @endif
                     </div>
                     <h1 class="h4 fw-bold mb-1">{{ ($appSetting ?? null)?->companyName() ?? config('app.name') }}</h1>
-                    <p class="opacity-75 small mb-0">Panel administrador</p>
+                    <p class="opacity-75 small mb-0">Administradores e instructores</p>
                 </div>
 
                 <div class="card auth-card border-0">
@@ -95,11 +95,6 @@
                                 Ingresar
                             </button>
                         </form>
-
-                        <p class="text-center text-muted small mt-4 mb-0">
-                            ¿Eres instructor?
-                            <a href="{{ route('instructor.login') }}" class="text-decoration-none">Portal del instructor</a>
-                        </p>
                     </div>
                 </div>
             </div>

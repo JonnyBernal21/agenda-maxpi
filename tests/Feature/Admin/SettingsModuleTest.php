@@ -31,6 +31,13 @@ class SettingsModuleTest extends TestCase
             ->assertOk()
             ->assertSee('Nombre de la empresa')
             ->assertSee('Logo de la empresa')
+            ->assertSee('Apariencia')
+            ->assertSee('MaxPi')
+            ->assertSee('Pizarra')
+            ->assertSee('Bosque')
+            ->assertSee('Cobre')
+            ->assertSee('Nocturno')
+            ->assertSee('Abismo')
             ->assertSee('Zona horaria')
             ->assertSee('Dirección de la escuela')
             ->assertSee('Teléfono')
@@ -54,7 +61,9 @@ class SettingsModuleTest extends TestCase
             ->assertSee('Eliminar alumnos')
             ->assertSee('students.view')
             ->assertSee('students.edit')
-            ->assertSee('students.delete');
+            ->assertSee('students.delete')
+            ->assertSee('Registrar abonos')
+            ->assertSee('students.pay');
 
         $this->get(route('admin.emails.index'))
             ->assertOk()
@@ -128,6 +137,61 @@ class SettingsModuleTest extends TestCase
             ->assertOk()
             ->assertSee('Zona horaria')
             ->assertSee('Dirección de la escuela');
+    }
+
+    public function test_admin_can_change_the_app_theme(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->from(route('admin.settings.index'))
+            ->put(route('admin.settings.update'), [
+                'company_name' => 'Agenda MaxPi',
+                'timezone' => 'America/Mexico_City',
+                'currency' => 'MXN',
+                'theme' => 'nocturno',
+            ])
+            ->assertRedirect(route('admin.settings.index'));
+
+        $this->assertDatabaseHas('settings', [
+            'theme' => 'nocturno',
+        ]);
+
+        $this->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('data-theme="nocturno"', false)
+            ->assertSee('data-scheme="dark"', false);
+
+        $this->from(route('admin.settings.index'))
+            ->put(route('admin.settings.update'), [
+                'company_name' => 'Agenda MaxPi',
+                'timezone' => 'America/Mexico_City',
+                'currency' => 'MXN',
+                'theme' => 'bosque',
+            ])
+            ->assertRedirect(route('admin.settings.index'));
+
+        $this->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('data-theme="bosque"', false)
+            ->assertSee('data-scheme="light"', false);
+
+        $this->from(route('admin.settings.index'))
+            ->put(route('admin.settings.update'), [
+                'company_name' => 'Agenda MaxPi',
+                'timezone' => 'America/Mexico_City',
+                'currency' => 'MXN',
+                'theme' => 'abismo',
+            ])
+            ->assertRedirect(route('admin.settings.index'));
+
+        $this->assertDatabaseHas('settings', [
+            'theme' => 'abismo',
+        ]);
+
+        $this->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('data-theme="abismo"', false)
+            ->assertSee('data-scheme="dark"', false);
     }
 
     public function test_admin_can_update_school_profile_details(): void

@@ -58,6 +58,34 @@
     </div>
 
     <hr class="my-4">
+    <p class="fw-semibold mb-2">Apariencia</p>
+    <p class="small text-muted mb-3">El tema se aplica a todo el sistema para todos los usuarios.</p>
+    <div class="theme-picker" role="radiogroup" aria-label="Tema visual">
+        @foreach (\App\Support\AppTheme::all() as $key => $theme)
+            <label class="theme-picker__card @if (old('theme', $setting->theme()) === $key) is-selected @endif">
+                <input
+                    type="radio"
+                    name="theme"
+                    value="{{ $key }}"
+                    data-scheme="{{ $theme['scheme'] }}"
+                    class="visually-hidden"
+                    @checked(old('theme', $setting->theme()) === $key)
+                >
+                <span class="theme-picker__swatches" aria-hidden="true">
+                    @foreach ($theme['swatches'] as $color)
+                        <i style="background: {{ $color }}"></i>
+                    @endforeach
+                </span>
+                <strong>{{ $theme['label'] }}</strong>
+                <small>{{ $theme['description'] }}</small>
+            </label>
+        @endforeach
+    </div>
+    @error('theme')
+        <div class="invalid-feedback d-block">{{ $message }}</div>
+    @enderror
+
+    <hr class="my-4">
     <p class="fw-semibold mb-3">Contacto</p>
     <div class="row g-4">
         <div class="col-md-6">

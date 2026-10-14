@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Services\SettingService;
+
 class ReservaCalendarColors
 {
     /**
@@ -9,12 +11,22 @@ class ReservaCalendarColors
      */
     public static function forStatus(string $status): array
     {
+        $theme = AppTheme::tokens(
+            app(SettingService::class)->current()->theme()
+        );
+
         return match ($status) {
             'confirmada' => [
-                'background' => '#2563eb',
-                'border' => '#1d4ed8',
-                'text' => '#ffffff',
+                'background' => $theme['accent'],
+                'border' => $theme['accent_hover'],
+                'text' => $theme['accent_ink'],
                 'class' => 'fc-event-confirmada',
+            ],
+            'en_curso' => [
+                'background' => $theme['ink'],
+                'border' => $theme['ink'],
+                'text' => '#ffffff',
+                'class' => 'fc-event-en-curso',
             ],
             'completada' => [
                 'background' => '#16a34a',
@@ -44,10 +56,19 @@ class ReservaCalendarColors
      */
     public static function forOccupied(): array
     {
+        if (AppTheme::isDark(self::themeKey())) {
+            return [
+                'background' => '#2a2829',
+                'border' => '#4a4746',
+                'text' => '#d4d2d0',
+                'class' => 'fc-event-occupied',
+            ];
+        }
+
         return [
-            'background' => '#e2e8f0',
-            'border' => '#94a3b8',
-            'text' => '#475569',
+            'background' => '#ECECEA',
+            'border' => '#C8C6C4',
+            'text' => '#4A4746',
             'class' => 'fc-event-occupied',
         ];
     }
@@ -59,11 +80,25 @@ class ReservaCalendarColors
      */
     public static function forAvailable(): array
     {
+        if (AppTheme::isDark(self::themeKey())) {
+            return [
+                'background' => '#16351f',
+                'border' => '#4ade80',
+                'text' => '#bbf7d0',
+                'class' => 'fc-event-available',
+            ];
+        }
+
         return [
             'background' => '#dcfce7',
             'border' => '#22c55e',
             'text' => '#166534',
             'class' => 'fc-event-available',
         ];
+    }
+
+    private static function themeKey(): string
+    {
+        return app(SettingService::class)->current()->theme();
     }
 }

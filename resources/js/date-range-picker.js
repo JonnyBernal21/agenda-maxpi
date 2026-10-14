@@ -71,6 +71,8 @@ const nextIsoWeekday = (from, isoDay) => {
     return addCalendarDays(date, delta);
 };
 
+export { isoDate, parseLocalDate, addCalendarDays };
+
 export const formatDisplayDate = (iso) => {
     const date = parseLocalDate(iso);
 
@@ -82,6 +84,21 @@ export const formatDisplayDate = (iso) => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
 
     return `${day}/${month}/${date.getFullYear()}`;
+};
+
+export const formatLongDate = (iso) => {
+    const date = parseLocalDate(iso);
+
+    if (!date) {
+        return '';
+    }
+
+    return date.toLocaleDateString('es-MX', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
 };
 
 const presetRanges = () => {
@@ -235,6 +252,9 @@ export const bindSingleDatePickers = async (root = document) => {
         const showPresets = field.dataset.noPresets !== 'true';
         const presets = showPresets ? presetSingleDays(field.dataset.minDate || valueInput.min || '') : {};
         const rangesPosition = wide ? 'left' : 'top';
+        const formatFieldDate = (iso) => (
+            field.dataset.labelStyle === 'long' ? formatLongDate(iso) : formatDisplayDate(iso)
+        );
 
         const instance = new Litepicker({
             element: display,
@@ -249,7 +269,7 @@ export const bindSingleDatePickers = async (root = document) => {
             minDate: minDate || undefined,
             showTooltip: false,
             parentEl: document.body,
-            zIndex: 2000,
+            zIndex: 10850,
             dropdowns: {
                 minYear: 2020,
                 maxYear: null,
@@ -309,7 +329,7 @@ export const bindSingleDatePickers = async (root = document) => {
                     }
 
                     const next = isoDate(start);
-                    display.value = formatDisplayDate(next);
+                    display.value = formatFieldDate(next);
 
                     if (valueInput.value === next) {
                         return;
@@ -322,7 +342,7 @@ export const bindSingleDatePickers = async (root = document) => {
         });
 
         if (valueInput.value) {
-            display.value = formatDisplayDate(valueInput.value);
+            display.value = formatFieldDate(valueInput.value);
         }
 
         valueInput._litepicker = instance;
@@ -330,4 +350,5 @@ export const bindSingleDatePickers = async (root = document) => {
         return instance;
     }).filter(Boolean);
 };
+
 
