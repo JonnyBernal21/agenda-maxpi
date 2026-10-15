@@ -373,10 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const addButton = canAddStudent
                 ? `<button
                     type="button"
-                    class="btn btn-sm btn-brand-outline ms-1"
-                    data-bs-dismiss="modal"
-                    data-bs-toggle="modal"
-                    data-bs-target="#addStudentModal"
+                    class="btn btn-sm btn-brand-outline ms-1 js-open-add-student"
                 >
                     <i class="bi bi-person-plus"></i> Agregar alumno
                 </button>`
@@ -514,7 +511,59 @@ document.addEventListener('DOMContentLoaded', () => {
         unlockSlot();
     });
 
+    const addStudentModalEl = document.getElementById('addStudentModal');
+    let returnToSchedule = false;
+
+    const openAddStudentModal = () => {
+        if (!addStudentModalEl) {
+            return;
+        }
+
+        returnToSchedule = true;
+        modalEl.dataset.skipReset = '1';
+
+        const scheduleModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        const studentModal = bootstrap.Modal.getOrCreateInstance(addStudentModalEl);
+
+        if (modalEl.classList.contains('show')) {
+            modalEl.addEventListener('hidden.bs.modal', () => studentModal.show(), { once: true });
+            scheduleModal.hide();
+            return;
+        }
+
+        studentModal.show();
+    };
+
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('.js-open-add-student');
+
+        if (!trigger) {
+            return;
+        }
+
+        event.preventDefault();
+        openAddStudentModal();
+    });
+
+    addStudentModalEl?.addEventListener('hidden.bs.modal', () => {
+        if (!returnToSchedule) {
+            return;
+        }
+
+        returnToSchedule = false;
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    });
+
+    document.getElementById('studentAdminForm')?.addEventListener('submit', () => {
+        returnToSchedule = false;
+    });
+
     modalEl.addEventListener('hidden.bs.modal', () => {
+        if (modalEl.dataset.skipReset === '1') {
+            delete modalEl.dataset.skipReset;
+            return;
+        }
+
         if (modalEl.dataset.autoOpen !== 'true') {
             clearStudent(true);
             unlockSlot();

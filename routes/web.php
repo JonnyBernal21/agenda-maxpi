@@ -30,7 +30,10 @@ use App\Http\Controllers\Instructor\DayAgendaController as InstructorDayAgendaCo
 use App\Http\Controllers\InstructorController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\PwaController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
 
 Route::redirect('/', '/login');
 

@@ -48,9 +48,21 @@
 
                     {{-- Búsqueda de alumno --}}
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">
-                            <i class="bi bi-search me-1"></i>Alumno
-                        </label>
+                        <div class="schedule-student-head">
+                            <label class="form-label fw-semibold mb-0" for="studentSearchInput">
+                                <i class="bi bi-search me-1"></i>Alumno
+                            </label>
+                            @can('students.manage')
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-brand-outline schedule-student-add js-open-add-student"
+                                    title="Nuevo alumno"
+                                    aria-label="Nuevo alumno"
+                                >
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            @endcan
+                        </div>
                         <div class="student-search">
                             <div class="input-group">
                                 <span class="input-group-text bg-white text-muted border-end-0">
@@ -81,10 +93,7 @@
                             @can('students.manage')
                                 <button
                                     type="button"
-                                    class="btn btn-sm btn-brand-outline ms-1"
-                                    data-bs-dismiss="modal"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#addStudentModal"
+                                    class="btn btn-sm btn-brand-outline ms-1 js-open-add-student"
                                 >
                                     <i class="bi bi-person-plus"></i> Agregar alumno
                                 </button>

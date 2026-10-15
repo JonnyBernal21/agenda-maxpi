@@ -5639,6 +5639,26 @@ div.dataTables_wrapper .dataTables_filter label {
     padding-bottom: 0.2rem;
 }
 
+.schedule-student-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.45rem;
+}
+
+.schedule-student-add {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
 .student-search {
     position: relative;
 }

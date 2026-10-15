@@ -37,12 +37,12 @@ class Setting extends Model
             return null;
         }
 
-        return asset($this->logo_path);
+        return '/'.ltrim(str_replace('\\', '/', $this->logo_path), '/');
     }
 
     public function faviconUrl(): string
     {
-        return $this->logoUrl() ?: asset('logo.png');
+        return $this->logoUrl() ?: '/logo.png';
     }
 
     public function theme(): string

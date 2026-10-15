@@ -122,7 +122,9 @@ class DashboardPermissionsTest extends TestCase
             ->assertSee('Agregar vehículo')
             ->assertSee('Agregar curso')
             ->assertSee('Agregar gasto')
-            ->assertSee('Agendar clase');
+            ->assertSee('Agendar clase')
+            ->assertSee('Nuevo alumno')
+            ->assertSee('js-open-add-student', false);
     }
 
     public function test_quick_actions_only_show_permitted_modules(): void
@@ -139,6 +141,7 @@ class DashboardPermissionsTest extends TestCase
             ->assertOk()
             ->assertSee('Agregar alumno')
             ->assertSee('Agendar clase')
+            ->assertSee('aria-label="Nuevo alumno"', false)
             ->assertDontSee('Agregar instructor')
             ->assertDontSee('Agregar vehículo')
             ->assertDontSee('Agregar curso')

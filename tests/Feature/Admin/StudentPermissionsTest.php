@@ -24,6 +24,8 @@ class StudentPermissionsTest extends TestCase
             ->assertOk()
             ->assertSee($student->email)
             ->assertDontSee('Agregar alumno')
+            ->assertDontSee('Nuevo alumno')
+            ->assertDontSee('js-open-add-student', false)
             ->assertDontSee('js-edit-student', false)
             ->assertDontSee('aria-label="Eliminar a '.$student->fullName().'"', false);
 

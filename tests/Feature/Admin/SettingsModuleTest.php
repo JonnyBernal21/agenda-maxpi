@@ -70,12 +70,23 @@ class SettingsModuleTest extends TestCase
             ->assertSee('Correos');
     }
 
+    public function test_web_manifest_uses_relative_icon_urls(): void
+    {
+        $this->get('/manifest.webmanifest')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/manifest+json; charset=utf-8')
+            ->assertJsonPath('display', 'standalone')
+            ->assertJsonPath('start_url', '/login')
+            ->assertJsonPath('icons.0.src', '/logo.png');
+    }
+
     public function test_pages_use_the_company_logo_as_favicon(): void
     {
         $this->get(route('login'))
             ->assertOk()
             ->assertSee('rel="icon"', false)
-            ->assertSee(asset('logo.png'), false);
+            ->assertSee('/logo.png', false)
+            ->assertSee('rel="manifest"', false);
 
         $this->actingAs(User::factory()->create());
         $setting = app(SettingService::class)->current();
