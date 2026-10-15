@@ -76,6 +76,7 @@ class SettingsModuleTest extends TestCase
             ->assertOk()
             ->assertHeader('content-type', 'application/manifest+json; charset=utf-8')
             ->assertJsonPath('display', 'standalone')
+            ->assertJsonPath('display_override.0', 'standalone')
             ->assertJsonPath('start_url', '/login')
             ->assertJsonPath('icons.0.src', '/logo.png');
     }

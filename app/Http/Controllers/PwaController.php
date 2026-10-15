@@ -16,15 +16,18 @@ class PwaController extends Controller
 
         return response()->json([
             'id' => '/',
+            'lang' => 'es',
             'name' => $name,
             'short_name' => mb_substr($name, 0, 12),
             'description' => 'Agenda de clases, citas y alumnos.',
             'start_url' => '/login',
             'scope' => '/',
             'display' => 'standalone',
-            'orientation' => 'portrait',
+            'display_override' => ['standalone', 'minimal-ui'],
+            'orientation' => 'any',
             'background_color' => $tokens['nav'],
             'theme_color' => $tokens['nav'],
+            'prefer_related_applications' => false,
             'icons' => [
                 [
                     'src' => $icon,
