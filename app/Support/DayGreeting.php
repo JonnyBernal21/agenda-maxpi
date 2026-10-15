@@ -55,4 +55,27 @@ final class DayGreeting
 
         return $name === '' ? $this->phrase() : $this->phrase().', '.$name;
     }
+
+    public static function capitalize(string $label): string
+    {
+        if ($label === '') {
+            return '';
+        }
+
+        return mb_strtoupper(mb_substr($label, 0, 1), 'UTF-8').mb_substr($label, 1);
+    }
+
+    public static function todayLong(?CarbonInterface $now = null): string
+    {
+        $day = ($now ?? Carbon::now('America/Mexico_City'))->copy()->locale('es');
+
+        return self::capitalize($day->isoFormat('dddd D [de] MMMM [de] YYYY'));
+    }
+
+    public static function todayShort(?CarbonInterface $now = null): string
+    {
+        $day = ($now ?? Carbon::now('America/Mexico_City'))->copy()->locale('es');
+
+        return self::capitalize($day->isoFormat('ddd D MMM'));
+    }
 }

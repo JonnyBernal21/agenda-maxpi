@@ -43,4 +43,12 @@ class DayGreetingTest extends TestCase
         $this->assertSame('Buenas noches', $greeting->phrase());
         $this->assertSame('night', $greeting->period());
     }
+
+    public function test_date_label_keeps_spanish_prepositions_lowercase(): void
+    {
+        $this->assertSame(
+            'Jueves 15 de octubre de 2026',
+            DayGreeting::capitalize('jueves 15 de octubre de 2026')
+        );
+    }
 }

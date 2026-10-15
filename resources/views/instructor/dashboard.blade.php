@@ -3,15 +3,7 @@
 @section('title', 'Mis clases — ' . config('app.name'))
 
 @section('content')
-    @php
-        $todayLabel = mb_convert_case(
-            \Illuminate\Support\Carbon::now('America/Mexico_City')->locale('es')->isoFormat('dddd, D [de] MMMM [de] YYYY'),
-            MB_CASE_TITLE,
-            'UTF-8'
-        );
-    @endphp
-
-    <div class="page-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+    <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         @include('partials.page-greeting', [
             'name' => $instructor->name,
             'subtitle' => 'Aquí tienes el resumen de tus clases de hoy.',
@@ -19,34 +11,35 @@
         <div class="dashboard-toolbar">
             <span class="dashboard-toolbar__date">
                 <i class="bi bi-calendar3"></i>
-                {{ $todayLabel }}
+                <span class="dashboard-toolbar__date-full">{{ \App\Support\DayGreeting::todayLong() }}</span>
+                <span class="dashboard-toolbar__date-short">{{ \App\Support\DayGreeting::todayShort() }}</span>
             </span>
         </div>
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="stat-card__icon"><i class="bi bi-calendar-day"></i></div>
                 <p class="stat-card__label">Clases de hoy</p>
                 <p class="stat-card__value">{{ $classesToday }}</p>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="stat-card__icon"><i class="bi bi-check2-circle"></i></div>
                 <p class="stat-card__label">Clases completadas</p>
                 <p class="stat-card__value">{{ $completedCount }}</p>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="stat-card__icon"><i class="bi bi-hourglass-split"></i></div>
                 <p class="stat-card__label">Pendientes de hoy</p>
                 <p class="stat-card__value">{{ $pendingCount }}</p>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="stat-card__icon"><i class="bi bi-calendar-week"></i></div>
                 <p class="stat-card__label">Clases de la semana</p>

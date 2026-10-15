@@ -1278,6 +1278,10 @@ button.admin-navbar__icon-link {
     font-weight: 700;
 }
 
+.dashboard-toolbar__date-short {
+    display: none;
+}
+
 .dashboard-side {
     display: flex;
     flex-direction: column;
@@ -1392,6 +1396,206 @@ button.admin-navbar__icon-link {
 
 .stat-card__value--money {
     font-size: 1.35rem;
+}
+
+@media (max-width: 991.98px) {
+    .page-header {
+        margin-bottom: 1.15rem;
+    }
+
+    .page-greeting {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .page-greeting__icon {
+        font-size: 2.1rem;
+        align-self: flex-start;
+        margin-top: 0.1rem;
+    }
+
+    .page-title {
+        font-size: 1.28rem;
+        line-height: 1.25;
+    }
+
+    .dashboard-toolbar {
+        flex-shrink: 0;
+    }
+
+    .stat-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas:
+            "icon label"
+            "icon value";
+        column-gap: 0.7rem;
+        row-gap: 0.12rem;
+        align-items: center;
+        padding: 0.9rem 0.85rem 0.9rem 1rem;
+    }
+
+    .stat-card__icon {
+        grid-area: icon;
+        margin-bottom: 0;
+        width: 2.15rem;
+        height: 2.15rem;
+        font-size: 1rem;
+        border-radius: 0.65rem;
+    }
+
+    .stat-card__label {
+        grid-area: label;
+        margin-bottom: 0;
+        font-size: 0.64rem;
+        letter-spacing: 0.03em;
+        line-height: 1.2;
+    }
+
+    .stat-card__value {
+        grid-area: value;
+        font-size: 1.35rem;
+    }
+
+    .stat-card__value--money {
+        font-size: 1.05rem;
+        letter-spacing: -0.03em;
+    }
+
+    .day-agenda__empty {
+        min-height: 8.5rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .page-header {
+        margin-bottom: 1.05rem;
+        gap: 0.85rem !important;
+    }
+
+    .page-greeting {
+        gap: 0.6rem;
+    }
+
+    .page-greeting__icon {
+        font-size: 1.85rem;
+    }
+
+    .page-title {
+        font-size: 1.18rem;
+        margin-bottom: 0.2rem !important;
+    }
+
+    .page-subtitle {
+        font-size: 0.84rem;
+        line-height: 1.35;
+    }
+
+    .dashboard-toolbar {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: stretch;
+        gap: 0.55rem;
+    }
+
+    .dashboard-toolbar__date {
+        justify-content: center;
+        font-size: 0.78rem;
+        width: 100%;
+    }
+
+    .dashboard-toolbar__date-full {
+        display: none;
+    }
+
+    .dashboard-toolbar__date-short {
+        display: inline;
+    }
+
+    .dashboard-toolbar__cta {
+        width: 100%;
+        justify-content: center;
+        padding: 0.62rem 1rem;
+    }
+
+    .stat-card {
+        padding: 0.8rem 0.7rem 0.8rem 0.9rem;
+        column-gap: 0.65rem;
+    }
+
+    .stat-card__icon {
+        width: 2.05rem;
+        height: 2.05rem;
+        font-size: 0.95rem;
+    }
+
+    .stat-card__value {
+        font-size: 1.28rem;
+    }
+
+    .stat-card__value--money {
+        font-size: 1.02rem;
+    }
+
+    .day-agenda__card {
+        padding: 0.9rem 0.8rem 0.85rem;
+        border-radius: 1rem;
+        row-gap: 0.65rem;
+    }
+
+    .day-agenda__icon {
+        width: 2.15rem;
+        height: 2.15rem;
+        font-size: 1rem;
+    }
+
+    .day-agenda__title {
+        font-size: 1.02rem;
+    }
+
+    .day-agenda__subtitle {
+        font-size: 0.78rem;
+    }
+
+    .day-agenda__toolbar-side {
+        min-width: 0;
+        gap: 0.2rem;
+    }
+
+    .day-agenda__date {
+        font-size: 0.78rem;
+        padding: 0.15rem 0.2rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .app-content.container-fluid {
+        padding-left: 0.85rem !important;
+        padding-right: 0.85rem !important;
+        padding-top: 0.9rem !important;
+    }
+
+    .app-topbar .container-fluid {
+        padding-left: 0.55rem;
+        padding-right: 0.6rem;
+        gap: 0.35rem;
+    }
+
+    .app-topbar__toggle {
+        width: 2.05rem;
+        height: 2.05rem;
+    }
+
+    .navbar-brand-name {
+        max-width: 6.75rem;
+        font-size: 0.88rem;
+    }
+
+    .admin-navbar__icon-link {
+        width: 1.95rem;
+        height: 1.95rem;
+    }
 }
 
 /* Report KPI cards */
