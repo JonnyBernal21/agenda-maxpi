@@ -4156,6 +4156,36 @@ html[data-scheme="dark"] .event-detail-row__meta {
     text-transform: uppercase;
 }
 
+.event-detail-home__address {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem;
+    color: var(--brand-ink);
+}
+
+.event-detail-home__address > i {
+    margin-top: 0.18rem;
+    font-size: 1rem;
+    color: var(--brand-accent);
+}
+
+.event-detail-home__address-label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--brand-500);
+}
+
+.event-detail-home__address-text {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 650;
+    line-height: 1.35;
+}
+
 .event-detail-home__map-wrap {
     display: flex;
     flex-direction: column;

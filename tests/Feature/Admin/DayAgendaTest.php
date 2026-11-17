@@ -108,6 +108,7 @@ class DayAgendaTest extends TestCase
             ->assertOk()
             ->assertJsonPath('classes.0.is_home', true)
             ->assertJsonPath('classes.0.meeting_point', 'Portón negro, tocar el timbre 3')
+            ->assertJsonPath('classes.0.meeting_address', $student->fresh()->formattedAddress())
             ->assertJsonPath('classes.0.notes', 'Llegar 10 minutos antes');
     }
 

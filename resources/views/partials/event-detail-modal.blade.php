@@ -189,6 +189,13 @@
                             <i class="bi bi-house-door-fill"></i>
                             Servicio a domicilio
                         </div>
+                        <div class="event-detail-home__address d-none" id="eventModalHomeAddressWrap">
+                            <i class="bi bi-geo-alt-fill" aria-hidden="true"></i>
+                            <div>
+                                <span class="event-detail-home__address-label">Punto de encuentro</span>
+                                <span class="event-detail-home__address-text" id="eventModalHomeAddress"></span>
+                            </div>
+                        </div>
                         <div class="event-detail-home__map-wrap d-none" id="eventModalHomeMapWrap">
                             <div id="eventModalHomeMap" class="event-detail-home__map" role="application" aria-label="Punto de encuentro"></div>
                             <a

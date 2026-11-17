@@ -25,6 +25,7 @@ final class PermissionCatalog
             'vehicles.manage' => 'Gestionar vehículos',
             'courses.manage' => 'Gestionar cursos',
             'reservas.manage' => 'Agendar y gestionar clases',
+            'reservas.schedule_past' => 'Agendar en días anteriores',
         ],
         'Finanzas' => [
             'sales.view' => 'Ver ingresos',

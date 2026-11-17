@@ -114,6 +114,7 @@ class CalendarEventsTest extends TestCase
         $this->assertEquals($vehicle->id, $event['extendedProps']['vehicleId']);
         $this->assertSame($vehicle->typeLabel(), $event['extendedProps']['vehicleType']);
         $this->assertSame('Portón negro, tocar el timbre 3', $event['extendedProps']['meetingPoint']);
+        $this->assertSame($student->fresh()->formattedAddress(), $event['extendedProps']['meetingAddress']);
         $this->assertEqualsWithDelta(19.282608, (float) $event['extendedProps']['meetingLat'], 0.000001);
         $this->assertEqualsWithDelta(-99.655701, (float) $event['extendedProps']['meetingLng'], 0.000001);
         $this->assertSame(
@@ -146,6 +147,7 @@ class CalendarEventsTest extends TestCase
         $this->assertFalse($event['extendedProps']['isHomeClass']);
         $this->assertSame('Prefiere clases por la mañana', $event['extendedProps']['notes']);
         $this->assertNull($event['extendedProps']['meetingPoint']);
+        $this->assertNull($event['extendedProps']['meetingAddress']);
     }
 
     public function test_month_and_list_views_omit_available_slots(): void

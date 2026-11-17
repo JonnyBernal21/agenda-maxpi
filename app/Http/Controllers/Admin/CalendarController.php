@@ -80,6 +80,7 @@ class CalendarController extends Controller
                         ...($reserva->student?->calendarHomeProps() ?? [
                             'isHomeClass' => false,
                             'meetingPoint' => null,
+                            'meetingAddress' => null,
                             'meetingLat' => null,
                             'meetingLng' => null,
                             'notes' => null,

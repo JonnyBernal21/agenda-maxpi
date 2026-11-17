@@ -22,7 +22,7 @@ class AvailabilityController extends Controller
     public function options(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'date' => ['required', 'date', 'after_or_equal:'.$this->sameDayCutoff->minBookableDate()],
+            'date' => array_merge(['required', 'date'], $this->sameDayCutoff->additionalDateRules()),
             'time' => ['required', Rule::in(Reservas::halfHourTimes())],
             'student_id' => ['nullable', 'integer', 'exists:students,id'],
         ]);

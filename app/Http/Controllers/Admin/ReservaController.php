@@ -32,13 +32,11 @@ class ReservaController extends Controller
     {
         $timeSlots = Reservas::halfHourTimes();
 
-        $minDate = $this->sameDayCutoff->minBookableDate();
-
         $validated = $request->validate([
             'student_id' => ['required', Rule::exists('students', 'id')],
             'instructor_id' => ['required', Rule::exists('instructors', 'id')],
             'vehicle_id' => ['required', Rule::exists('vehicles', 'id')],
-            'date' => ['required', 'date', 'after_or_equal:'.$minDate],
+            'date' => array_merge(['required', 'date'], $this->sameDayCutoff->additionalDateRules()),
             'time' => ['required', Rule::in($timeSlots)],
         ], [
             'student_id.required' => 'Debes buscar y seleccionar un alumno registrado.',
@@ -110,16 +108,16 @@ class ReservaController extends Controller
             'num_classes' => $student->remainingClasses(),
         ];
 
-        $minDate = $this->sameDayCutoff->minBookableDate();
+        $pastDateRules = $this->sameDayCutoff->additionalDateRules();
 
         $validator = Validator::make($request->all(), [
             'student_id' => ['required', Rule::exists('students', 'id')],
-            'start_date' => ['required', 'date', 'after_or_equal:'.$minDate],
+            'start_date' => array_merge(['required', 'date'], $pastDateRules),
             'weekdays' => ['required', 'array', 'min:1'],
             'weekdays.*' => ['integer', Rule::in([1, 2, 3, 4, 5, 6])],
             'time' => ['required', Rule::in(Reservas::halfHourTimes())],
             'class_dates' => ['nullable', 'array'],
-            'class_dates.*' => ['date', 'after_or_equal:'.$minDate, 'distinct'],
+            'class_dates.*' => array_merge(['date'], $pastDateRules, ['distinct']),
             'class_times' => ['nullable', 'array'],
             'class_times.*' => [Rule::in(Reservas::halfHourTimes())],
             'class_vehicle_ids' => ['nullable', 'array'],
@@ -399,12 +397,12 @@ class ReservaController extends Controller
         $minDate = $this->sameDayCutoff->minBookableDate();
 
         $validated = $request->validate([
-            'date' => ['required', 'date', 'after_or_equal:'.$minDate],
+            'date' => array_merge(['required', 'date'], $this->sameDayCutoff->additionalDateRules()),
             'time' => ['required', Rule::in($timeSlots)],
         ], [
             'date.after_or_equal' => $this->sameDayCutoff->blocksDate((string) $request->input('date'))
                 ? $this->sameDayCutoff->message()
-                : 'Elige una fecha a partir de '.$minDate.'.',
+                : 'Elige una fecha a partir de '.($minDate !== '' ? $minDate : 'hoy').'.',
             'time.in' => 'El horario debe ser en intervalos de 30 minutos entre 07:00 y 19:00.',
         ]);
 

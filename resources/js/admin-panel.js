@@ -151,9 +151,15 @@ const initAssignSchedule = () => {
     const conflictsUrl = modalEl.dataset.conflictsUrl || '';
     const minStartDate = modalEl.dataset.minStartDate || '';
     const sameDayBlocked = modalEl.dataset.sameDayBlocked === 'true';
+    const canSchedulePast = modalEl.dataset.canSchedulePast === 'true';
     const sameDayMessage =
         modalEl.dataset.sameDayMessage ||
         'A partir de las 9:00 AM no se pueden agendar clases ni horarios para el día de hoy. Elige una fecha a partir de mañana.';
+    const emptyStartHint = canSchedulePast
+        ? 'Puedes agendar también en días anteriores.'
+        : sameDayBlocked
+            ? 'A partir de las 9:00 AM no se agenda el día de hoy. Elige desde mañana.'
+            : 'Elige lunes o viernes para detectar el día de arranque.';
     const parseJsonData = (value, fallback) => {
         try {
             const parsed = JSON.parse(value || '');
@@ -204,9 +210,7 @@ const initAssignSchedule = () => {
 
         if (!value) {
             if (hint) {
-                hint.textContent = sameDayBlocked
-                    ? 'A partir de las 9:00 AM no se agenda el día de hoy. Elige desde mañana.'
-                    : 'Elige lunes o viernes para detectar el día de arranque.';
+                hint.textContent = emptyStartHint;
             }
             return null;
         }
@@ -1341,7 +1345,7 @@ const initPaymentReceipt = () => {
         const canSend = Boolean(state.sendUrl && state.email);
         emailBtn.disabled = !canSend;
         emailBtn.title = canSend
-            ? `Enviar horarios y recibo a ${state.email}`
+            ? `Enviar recibo por correo a ${state.email}`
             : 'El alumno no tiene un correo para enviar el recibo';
     };
 
@@ -1435,7 +1439,7 @@ const initPaymentReceipt = () => {
             const payload = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                await showBookingError(payload.message || 'No se pudieron enviar el recibo y los horarios por correo.');
+                await showBookingError(payload.message || 'No se pudo enviar el recibo por correo.');
                 return;
             }
 
@@ -1445,7 +1449,7 @@ const initPaymentReceipt = () => {
                 async () => {
                     await showBookingSuccess(
                         payload.message ||
-                            `Horarios y recibo enviados por correo a ${payload.email || state.email || 'el alumno'}.`,
+                            `Recibo enviado por correo a ${payload.email || state.email || 'el alumno'}.`,
                         'Registro exitoso'
                     );
                     window.location.reload();
@@ -1454,7 +1458,7 @@ const initPaymentReceipt = () => {
             );
             modal.hide();
         } catch {
-            await showBookingError('No se pudieron enviar el recibo y los horarios por correo. Intenta de nuevo.');
+            await showBookingError('No se pudo enviar el recibo por correo. Intenta de nuevo.');
         } finally {
             state.sending = false;
             emailBtn.innerHTML = originalHtml;
@@ -1703,7 +1707,7 @@ const initScheduleSummary = () => {
         }
     };
 
-    const showReceiptPreview = ({ reopenSummary = false } = {}) => {
+    const showReceiptPreview = ({ completeOnClose = false } = {}) => {
         if (!state.receiptUrl) {
             return;
         }
@@ -1714,9 +1718,13 @@ const initScheduleSummary = () => {
             history_url: state.historyUrl,
             email: state.student?.email,
             student: state.student,
-            onHidden: reopenSummary
-                ? () => {
-                      modal.show();
+            onHidden: completeOnClose
+                ? async () => {
+                      await showBookingSuccess(
+                          'El alumno quedó registrado.',
+                          'Registro exitoso'
+                      );
+                      window.location.reload();
                   }
                 : null,
         });
@@ -1792,7 +1800,7 @@ const initScheduleSummary = () => {
         modalEl.addEventListener(
             'hidden.bs.modal',
             () => {
-                showReceiptPreview({ reopenSummary: true });
+                showReceiptPreview({ completeOnClose: true });
             },
             { once: true }
         );

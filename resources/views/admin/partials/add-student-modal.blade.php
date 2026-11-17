@@ -153,7 +153,6 @@
                                         value="{{ old('email') }}"
                                         class="form-control @error('email') is-invalid @enderror"
                                         placeholder="alumno@correo.com"
-                                        required
                                     >
                                 </div>
                                 @error('email')
@@ -172,7 +171,6 @@
                                         value="{{ old('phone') }}"
                                         class="form-control @error('phone') is-invalid @enderror"
                                         placeholder="+52 55 1234 5678"
-                                        required
                                     >
                                 </div>
                                 @error('phone')

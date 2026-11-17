@@ -299,7 +299,7 @@
                         <button
                             type="button"
                             class="btn btn-brand-outline js-student-email"
-                            title="Enviar horarios por correo"
+                            title="{{ $student->email ? 'Enviar horarios por correo' : 'El alumno no tiene un correo para enviar horarios' }}"
                             aria-label="Enviar horarios por correo a {{ $student->fullName() }}"
                             data-email="{{ $student->email }}"
                             data-student-name="{{ $student->fullName() }}"

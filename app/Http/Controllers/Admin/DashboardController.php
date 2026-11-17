@@ -31,7 +31,7 @@ class DashboardController extends Controller
             'vehiclesCount' => Vehicle::count(),
             'upcomingPayments' => $this->upcomingPayments->forDashboard($this->sameDayCutoff->now()),
             'dayAgenda' => $this->dayAgenda->forDate($today),
-            'minBookableDate' => $this->sameDayCutoff->minBookableDate(),
+            'minBookableDate' => $this->sameDayCutoff->minBookableDate() ?: '',
             'sameDayScheduleMessage' => $this->sameDayCutoff->message(),
             'instructors' => Instructor::query()->orderBy('name')->orderBy('last_name')->get(),
             'vehicles' => Vehicle::query()->orderBy('modelo')->get(),

@@ -39,6 +39,7 @@
     data-min-start-date="{{ $minBookableDate }}"
     data-same-day-blocked="{{ $sameDayScheduleBlocked ? 'true' : 'false' }}"
     data-same-day-message="{{ $sameDayScheduleMessage }}"
+    data-can-schedule-past="{{ auth()->user()?->can('reservas.schedule_past') ? 'true' : 'false' }}"
 >
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content assign-schedule-modal modal-content--stack">
@@ -117,7 +118,9 @@
                                     >
                                 </div>
                                 <p class="small text-muted mt-2 mb-0" id="scheduleStartHint">
-                                    @if ($sameDayScheduleBlocked)
+                                    @if (auth()->user()?->can('reservas.schedule_past'))
+                                        Puedes agendar también en días anteriores.
+                                    @elseif ($sameDayScheduleBlocked)
                                         A partir de las 9:00 AM no se agenda el día de hoy. Elige desde mañana.
                                     @else
                                         Elige lunes o viernes para detectar el día de arranque.

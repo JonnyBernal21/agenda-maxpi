@@ -71,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
                 'instructors' => Instructor::query()->orderBy('name')->get(),
                 'vehicles' => Vehicle::query()->orderBy('modelo')->get(),
                 'timeSlots' => Reservas::availableTimes(),
-                'minBookableDate' => $cutoff->minBookableDate(),
+                'minBookableDate' => $cutoff->minBookableDate() ?: '',
                 'sameDayScheduleBlocked' => $cutoff->isSameDayBlocked(),
                 'sameDayScheduleMessage' => $cutoff->message(),
             ]);

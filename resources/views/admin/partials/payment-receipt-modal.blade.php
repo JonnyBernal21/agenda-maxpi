@@ -51,13 +51,22 @@
                 </button>
                 <button
                     type="button"
-                    class="btn btn-brand d-flex align-items-center gap-2"
+                    class="btn btn-brand-outline d-flex align-items-center gap-2"
                     id="paymentReceiptEmail"
-                    title="Enviar horarios y recibo por correo"
-                    aria-label="Enviar horarios y recibo por correo"
+                    title="Enviar recibo por correo"
+                    aria-label="Enviar recibo por correo"
                 >
                     <i class="bi bi-envelope"></i>
                     Enviar
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-brand d-flex align-items-center gap-2"
+                    data-bs-dismiss="modal"
+                    title="Cerrar y completar el registro"
+                    aria-label="Cerrar y completar el registro"
+                >
+                    Cerrar
                 </button>
             </div>
         </div>

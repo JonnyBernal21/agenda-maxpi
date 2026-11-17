@@ -133,20 +133,22 @@ class StudentController extends Controller
     private function enrollmentPayload(Request $request, ?Student $student = null): array
     {
         $isHome = $request->boolean('is_home_class');
+        $request->merge([
+            'email' => filled($request->input('email')) ? trim((string) $request->input('email')) : null,
+            'phone' => filled($request->input('phone')) ? trim((string) $request->input('phone')) : null,
+        ]);
 
         $rules = [
             'course_id' => ['required', Rule::exists('courses', 'id')],
             'name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => [
-                'required',
+                'nullable',
                 'email',
                 'max:255',
-                $student
-                    ? Rule::unique('students', 'email')->ignore($student->id)
-                    : 'unique:students,email',
+                Rule::unique('students', 'email')->ignore($student?->id),
             ],
-            'phone' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:255'],
             'state' => ['required', 'string', 'max:255'],
@@ -180,8 +182,8 @@ class StudentController extends Controller
             'course_id' => $validated['course_id'],
             'name' => $validated['name'],
             'last_name' => $validated['last_name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'],
+            'email' => $validated['email'] ?? null,
+            'phone' => $validated['phone'] ?? null,
             'address' => $validated['address'],
             'city' => $validated['city'],
             'state' => $validated['state'],
@@ -377,6 +379,12 @@ class StudentController extends Controller
 
     public function sendSchedule(Student $student): JsonResponse
     {
+        if (! filled($student->email)) {
+            return response()->json([
+                'message' => 'El alumno no tiene un correo para enviar los horarios.',
+            ], 422);
+        }
+
         $sent = $this->studentMail->sendSchedule($student);
 
         if (! $sent) {

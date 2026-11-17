@@ -1132,6 +1132,7 @@ document.addEventListener('DOMContentLoaded', () => {
             whatsapp: item.whatsapp,
             isHomeClass: item.is_home,
             meetingPoint: item.meeting_point,
+            meetingAddress: item.meeting_address,
             meetingLat: item.meeting_lat,
             meetingLng: item.meeting_lng,
             notes: item.notes,

@@ -113,6 +113,7 @@ class DayAgendaService
             'class_number' => $classNumber,
             'is_home' => $isHome,
             'meeting_point' => $reserva->student?->meeting_point,
+            'meeting_address' => $isHome ? $reserva->student?->formattedAddress() : null,
             'meeting_lat' => $reserva->student?->meeting_lat !== null ? (float) $reserva->student->meeting_lat : null,
             'meeting_lng' => $reserva->student?->meeting_lng !== null ? (float) $reserva->student->meeting_lng : null,
             'notes' => $reserva->student?->notes,

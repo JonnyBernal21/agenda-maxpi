@@ -29,6 +29,7 @@ const normalize = (props = {}) => {
     return {
         isHome: Boolean(props.isHomeClass ?? props.is_home),
         meetingPoint: text(props.meetingPoint ?? props.meeting_point),
+        meetingAddress: text(props.meetingAddress ?? props.meeting_address),
         notes: text(props.notes),
         lat,
         lng,
@@ -91,6 +92,7 @@ const applyHomeDetails = (data, { layout = false } = {}) => {
     }
 
     wrap.classList.remove('d-none');
+    setRow('eventModalHomeAddressWrap', 'eventModalHomeAddress', data.meetingAddress);
     setRow('eventModalHomeNotesWrap', 'eventModalHomeNotes', data.meetingPoint);
     setRow('eventModalNotesWrap', 'eventModalNotes', data.notes);
 
@@ -108,7 +110,7 @@ const applyHomeDetails = (data, { layout = false } = {}) => {
         }
     } else {
         mapWrap?.classList.add('d-none');
-        mapEmpty?.classList.toggle('d-none', Boolean(data.meetingPoint || data.notes));
+        mapEmpty?.classList.toggle('d-none', Boolean(data.meetingAddress || data.meetingPoint || data.notes));
 
         if (mapsLink) {
             mapsLink.classList.add('d-none');

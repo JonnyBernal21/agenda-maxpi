@@ -63,7 +63,9 @@ class SettingsModuleTest extends TestCase
             ->assertSee('students.edit')
             ->assertSee('students.delete')
             ->assertSee('Registrar abonos')
-            ->assertSee('students.pay');
+            ->assertSee('students.pay')
+            ->assertSee('Agendar en días anteriores')
+            ->assertSee('reservas.schedule_past');
 
         $this->get(route('admin.emails.index'))
             ->assertOk()

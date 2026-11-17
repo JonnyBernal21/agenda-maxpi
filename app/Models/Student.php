@@ -449,6 +449,19 @@ class Student extends Authenticatable
         return trim($this->name.' '.$this->last_name);
     }
 
+    public function formattedAddress(): ?string
+    {
+        $address = collect([
+            $this->address,
+            $this->city,
+            $this->state,
+            $this->zip,
+            $this->country,
+        ])->filter(fn ($part) => filled($part))->implode(', ');
+
+        return $address !== '' ? $address : null;
+    }
+
     public function paymentMethodLabel(): string
     {
         return self::PAYMENT_METHODS[$this->payment_method] ?? '—';
@@ -472,6 +485,7 @@ class Student extends Authenticatable
             return [
                 'isHomeClass' => false,
                 'meetingPoint' => null,
+                'meetingAddress' => null,
                 'meetingLat' => null,
                 'meetingLng' => null,
                 'notes' => $notes,
@@ -481,6 +495,7 @@ class Student extends Authenticatable
         return [
             'isHomeClass' => true,
             'meetingPoint' => filled($this->meeting_point) ? (string) $this->meeting_point : null,
+            'meetingAddress' => $this->formattedAddress(),
             'meetingLat' => $this->meeting_lat !== null ? (float) $this->meeting_lat : null,
             'meetingLng' => $this->meeting_lng !== null ? (float) $this->meeting_lng : null,
             'notes' => $notes,

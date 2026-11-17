@@ -153,6 +153,22 @@ class PaymentReceiptTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_send_schedule_requires_email(): void
+    {
+        Mail::fake();
+        $this->actingAs(User::factory()->create());
+        $student = $this->makeStudent(['email' => '']);
+        $this->bookClass($student);
+
+        $this->postJson(route('admin.students.schedule-email', $student))
+            ->assertStatus(422)
+            ->assertJsonFragment([
+                'message' => 'El alumno no tiene un correo para enviar los horarios.',
+            ]);
+
+        Mail::assertNothingSent();
+    }
+
     public function test_send_schedule_returns_receipt_preview_urls(): void
     {
         Mail::fake();

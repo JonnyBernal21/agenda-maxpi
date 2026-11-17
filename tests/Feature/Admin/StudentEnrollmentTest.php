@@ -49,6 +49,47 @@ class StudentEnrollmentTest extends TestCase
         $this->assertSame(now()->toDateString(), $student->payments()->first()?->paid_at?->toDateString());
     }
 
+    public function test_admin_can_register_a_student_without_email_or_phone(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $course = $this->makeCourse(5200);
+
+        $this->from(route('admin.students.index'))
+            ->post(route('admin.students.store'), $this->payload($course, [
+                'email' => '',
+                'phone' => '',
+            ]))
+            ->assertRedirect(route('admin.students.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $student = Student::query()->where('name', 'ANA')->first();
+
+        $this->assertNotNull($student);
+        $this->assertNull($student->email);
+        $this->assertNull($student->phone);
+    }
+
+    public function test_several_students_can_omit_email(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $course = $this->makeCourse(5200);
+
+        $this->post(route('admin.students.store'), $this->payload($course, [
+            'name' => 'Ana',
+            'email' => '',
+            'phone' => '',
+        ]))->assertSessionDoesntHaveErrors();
+
+        $this->post(route('admin.students.store'), $this->payload($course, [
+            'name' => 'Luis',
+            'last_name' => 'Hernández',
+            'email' => '',
+            'phone' => '',
+        ]))->assertSessionDoesntHaveErrors();
+
+        $this->assertSame(2, Student::query()->whereNull('email')->count());
+    }
+
     public function test_home_class_adds_the_entered_amount_fee(): void
     {
         $this->actingAs(User::factory()->create());

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Carbon\Carbon;
 
 class SameDayScheduleCutoff
@@ -10,18 +11,35 @@ class SameDayScheduleCutoff
 
     public const CUTOFF_TIME = '09:00';
 
+    public const PAST_DATES_PERMISSION = 'reservas.schedule_past';
+
     public function now(): Carbon
     {
         return Carbon::now(self::TIMEZONE);
     }
 
+    public function allowsPastDates(?User $user = null): bool
+    {
+        $user ??= auth()->user();
+
+        return $user instanceof User && $user->can(self::PAST_DATES_PERMISSION);
+    }
+
     public function isSameDayBlocked(): bool
     {
+        if ($this->allowsPastDates()) {
+            return false;
+        }
+
         return $this->now()->format('H:i') >= self::CUTOFF_TIME;
     }
 
     public function minBookableDate(): string
     {
+        if ($this->allowsPastDates()) {
+            return '';
+        }
+
         $today = $this->now()->toDateString();
 
         if ($this->isSameDayBlocked()) {
@@ -31,9 +49,19 @@ class SameDayScheduleCutoff
         return $today;
     }
 
+    /**
+     * @return list<string>
+     */
+    public function additionalDateRules(): array
+    {
+        $min = $this->minBookableDate();
+
+        return $min !== '' ? ['after_or_equal:'.$min] : [];
+    }
+
     public function blocksDate(?string $date): bool
     {
-        if ($date === null || $date === '') {
+        if ($date === null || $date === '' || $this->allowsPastDates()) {
             return false;
         }
 
