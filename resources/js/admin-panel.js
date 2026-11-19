@@ -2749,7 +2749,7 @@ const initInstructorAdmin = () => {
             submitLabel.textContent = 'Guardar instructor';
         }
 
-        resetInstructorDocs(true);
+        resetInstructorDocs(false);
 
         if (clearFields) {
             fieldNames.forEach((name) => setFieldValue(name, name === 'country' ? 'México' : ''));
@@ -2927,7 +2927,7 @@ const initVehicleAdmin = () => {
             submitLabel.textContent = 'Guardar vehículo';
         }
 
-        resetVehicleDocs(true);
+        resetVehicleDocs(false);
 
         if (clearFields) {
             fieldNames.forEach((name) => {

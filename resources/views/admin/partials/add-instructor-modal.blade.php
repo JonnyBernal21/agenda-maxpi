@@ -230,7 +230,7 @@
                         <div class="col-12">
                             <hr class="my-1">
                             <p class="fw-semibold mb-1">Documentos</p>
-                            <p class="small text-muted mb-0">Toma una foto con la cámara o sube un archivo. El DNI y el comprobante aceptan imagen o PDF.</p>
+                            <p class="small text-muted mb-0">Opcional. Toma una foto con la cámara o sube un archivo. El DNI y el comprobante aceptan imagen o PDF.</p>
                         </div>
 
                         <div class="col-md-6">

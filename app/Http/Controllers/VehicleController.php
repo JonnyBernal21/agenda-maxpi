@@ -81,8 +81,6 @@ class VehicleController extends Controller
      */
     private function rules(?Vehicle $vehicle = null): array
     {
-        $fileRule = $vehicle ? 'nullable' : 'required';
-
         return [
             'modelo' => ['required', 'string', 'max:255'],
             'año' => ['required', 'string', 'max:255'],
@@ -99,9 +97,9 @@ class VehicleController extends Controller
             'status' => ['required', Rule::in(['disponible', 'en_mantenimiento', 'fuera_de_servicio'])],
             'owner' => ['required', 'string', 'max:255'],
             'owner_id' => ['required', 'string', 'max:255'],
-            'plate_photo' => [$fileRule, 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'circulation_card' => [$fileRule, 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
-            'front_photo' => [$fileRule, 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'plate_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'circulation_card' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
+            'front_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
     }
 
@@ -111,15 +109,12 @@ class VehicleController extends Controller
     private function messages(): array
     {
         return [
-            'plate_photo.required' => 'Agrega la foto de la placa.',
             'plate_photo.mimes' => 'La foto de la placa debe ser JPG, PNG o WEBP. No se acepta HEIC ni otros formatos.',
             'plate_photo.max' => 'La foto de la placa no puede pesar más de 5 MB.',
             'plate_photo.uploaded' => 'No se pudo subir la foto de la placa. Revisa que sea JPG, PNG o WEBP y que pese máximo 5 MB.',
-            'circulation_card.required' => 'Agrega la tarjeta de circulación.',
             'circulation_card.mimes' => 'La tarjeta de circulación debe ser JPG, PNG, WEBP o PDF.',
             'circulation_card.max' => 'La tarjeta de circulación no puede pesar más de 8 MB.',
             'circulation_card.uploaded' => 'No se pudo subir la tarjeta de circulación. Revisa formato y tamaño (máx. 8 MB).',
-            'front_photo.required' => 'Agrega la foto frontal del vehículo.',
             'front_photo.mimes' => 'La foto frontal debe ser JPG, PNG o WEBP. No se acepta HEIC ni otros formatos.',
             'front_photo.max' => 'La foto frontal no puede pesar más de 5 MB.',
             'front_photo.uploaded' => 'No se pudo subir la foto frontal. Revisa que sea JPG, PNG o WEBP y que pese máximo 5 MB.',
@@ -152,8 +147,12 @@ class VehicleController extends Controller
         return $newPath;
     }
 
-    private function storeDocument(UploadedFile $file, string $prefix): string
+    private function storeDocument(?UploadedFile $file, string $prefix): ?string
     {
+        if (! $file) {
+            return null;
+        }
+
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'jpg');
         $filename = $prefix.'_'.Str::uuid().'.'.$extension;
 

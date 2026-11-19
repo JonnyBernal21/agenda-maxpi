@@ -47,7 +47,7 @@ class VehicleAdminTest extends TestCase
         Storage::disk('uploads')->assertExists($this->uploadsRelativePath($vehicle->front_photo_path));
     }
 
-    public function test_store_requires_gallery_files(): void
+    public function test_store_allows_missing_gallery_files(): void
     {
         $this->actingAs(User::factory()->create());
 
@@ -63,9 +63,14 @@ class VehicleAdminTest extends TestCase
                 'owner_id' => 'MAXPI-001',
             ])
             ->assertRedirect(route('admin.vehicles.index'))
-            ->assertSessionHasErrors(['plate_photo', 'circulation_card', 'front_photo']);
+            ->assertSessionDoesntHaveErrors();
 
-        $this->assertDatabaseMissing('vehicles', ['plate' => 'GAL-0002']);
+        $vehicle = Vehicle::query()->where('plate', 'GAL-0002')->first();
+
+        $this->assertNotNull($vehicle);
+        $this->assertNull($vehicle->plate_photo_path);
+        $this->assertNull($vehicle->circulation_card_path);
+        $this->assertNull($vehicle->front_photo_path);
     }
 
     public function test_store_rejects_an_invalid_image_format(): void

@@ -119,7 +119,6 @@ class InstructorController extends Controller
      */
     private function rules(?Instructor $instructor = null): array
     {
-        $fileRule = $instructor ? 'nullable' : 'required';
         $linkedUserId = $instructor ? $this->accounts->linkedUser($instructor)?->id : null;
 
         return [
@@ -146,10 +145,10 @@ class InstructorController extends Controller
             'state' => ['required', 'string', 'max:255'],
             'zip' => ['required', 'string', 'max:255'],
             'country' => ['required', 'string', 'max:255'],
-            'photo' => [$fileRule, 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'dni_front' => [$fileRule, 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
-            'dni_back' => [$fileRule, 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
-            'address_proof' => [$fileRule, 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
+            'photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'dni_front' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
+            'dni_back' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
+            'address_proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
         ];
     }
 
@@ -159,19 +158,15 @@ class InstructorController extends Controller
     private function messages(): array
     {
         return [
-            'photo.required' => 'Agrega la fotografía del instructor.',
             'photo.mimes' => 'La fotografía debe ser JPG, PNG o WEBP. No se acepta HEIC ni otros formatos.',
             'photo.max' => 'La fotografía no puede pesar más de 5 MB.',
             'photo.uploaded' => 'No se pudo subir la fotografía. Revisa que sea JPG, PNG o WEBP y que pese máximo 5 MB.',
-            'dni_front.required' => 'Agrega el frente del DNI.',
             'dni_front.mimes' => 'El DNI frente debe ser JPG, PNG, WEBP o PDF.',
             'dni_front.max' => 'El DNI frente no puede pesar más de 8 MB.',
             'dni_front.uploaded' => 'No se pudo subir el DNI frente. Revisa formato (JPG, PNG, WEBP o PDF) y tamaño (máx. 8 MB).',
-            'dni_back.required' => 'Agrega el reverso del DNI.',
             'dni_back.mimes' => 'El DNI reverso debe ser JPG, PNG, WEBP o PDF.',
             'dni_back.max' => 'El DNI reverso no puede pesar más de 8 MB.',
             'dni_back.uploaded' => 'No se pudo subir el DNI reverso. Revisa formato (JPG, PNG, WEBP o PDF) y tamaño (máx. 8 MB).',
-            'address_proof.required' => 'Agrega el comprobante de domicilio.',
             'address_proof.mimes' => 'El comprobante debe ser JPG, PNG, WEBP o PDF.',
             'address_proof.max' => 'El comprobante no puede pesar más de 8 MB.',
             'address_proof.uploaded' => 'No se pudo subir el comprobante. Revisa formato (JPG, PNG, WEBP o PDF) y tamaño (máx. 8 MB).',
@@ -209,8 +204,12 @@ class InstructorController extends Controller
         return $newPath;
     }
 
-    private function storeDocument(UploadedFile $file, string $prefix): string
+    private function storeDocument(?UploadedFile $file, string $prefix): ?string
     {
+        if (! $file) {
+            return null;
+        }
+
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'jpg');
         $filename = $prefix.'_'.Str::uuid().'.'.$extension;
 

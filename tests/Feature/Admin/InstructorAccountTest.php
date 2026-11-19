@@ -64,6 +64,31 @@ class InstructorAccountTest extends TestCase
         $this->assertGuest('web');
     }
 
+    public function test_creating_an_instructor_without_documents(): void
+    {
+        Storage::fake('uploads');
+        $this->actingAs(User::factory()->create());
+
+        $this->from(route('admin.instructors.index'))
+            ->post(route('admin.instructors.store'), $this->payload([
+                'email' => 'sin.docs@agenda-maxpi.test',
+                'photo' => null,
+                'dni_front' => null,
+                'dni_back' => null,
+                'address_proof' => null,
+            ]))
+            ->assertRedirect(route('admin.instructors.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $instructor = Instructor::query()->where('email', 'sin.docs@agenda-maxpi.test')->first();
+
+        $this->assertNotNull($instructor);
+        $this->assertNull($instructor->photo_path);
+        $this->assertNull($instructor->dni_front_path);
+        $this->assertNull($instructor->dni_back_path);
+        $this->assertNull($instructor->address_proof_path);
+    }
+
     public function test_instructor_portal_login_redirects_to_shared_login(): void
     {
         $this->get('/instructor/login')->assertRedirect(route('login'));

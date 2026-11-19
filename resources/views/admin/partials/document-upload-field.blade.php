@@ -1,7 +1,7 @@
 @php
     $accept = $accept ?? 'image/*,application/pdf';
     $capture = $capture ?? 'environment';
-    $required = $required ?? true;
+    $required = $required ?? false;
     $allowsPdf = str_contains($accept, 'pdf');
     $maxKb = $maxKb ?? ($allowsPdf ? 8192 : 5120);
     $maxMb = (int) round($maxKb / 1024);
